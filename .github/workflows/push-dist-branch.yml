@@ -1,0 +1,33 @@
+name: Build and Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit and Push to Built Branch
+        run: |
+          git config --global user.email "mimoja@meticuloushome.com"
+          git config --global user.name "Mimoja Build Bot"
+          git checkout -b dist
+          git add -f dist/
+          git commit -m "Build and deploy"
+          git push -f origin dist
+  
