@@ -5,13 +5,14 @@ import {
   ActionResponse,
   ActionType,
   Notification,
-  Profile,
   ProfileIdent,
   Settings as Setting,
   WiFiConfig,
   WiFiConnectRequest,
   WiFiNetwork
 } from './types';
+
+import { Profile } from 'meticulous-typescript-profile';
 
 export default class Api {
   private axiosInstance: AxiosInstance;
