@@ -13,7 +13,6 @@
     "format": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --write",
     "format:check": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --check"
   },
-
   "devDependencies": {
     "prettier": "^3.2.5",
     "ts-loader": "^8.4.0",
