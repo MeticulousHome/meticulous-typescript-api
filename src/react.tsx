@@ -1,4 +1,3 @@
-import Api from './index';
 import {
   Notification,
   ProfileIdent,
@@ -6,12 +5,13 @@ import {
   WiFiConfig,
   WiFiNetwork,
   AcknowledgeNotificationRequest,
-  Profile,
   WiFiConnectRequest,
   ActionType,
   APIError
 } from './types';
 import ApiWrapper from './wrapper';
+
+import { Profile } from 'meticulous-typescript-profile/';
 
 interface ApiProps {
   // machine functions

@@ -75,6 +75,3 @@ export interface APIError {
   description: string;
   data?: object;
 }
-
-// Placeholder until we habe the profile definition in a library
-export type Profile = object;

@@ -2,7 +2,6 @@ import Api from '.';
 import {
   APIError,
   ActionType,
-  Profile,
   ProfileIdent,
   Notification,
   AcknowledgeNotificationRequest,
@@ -11,6 +10,7 @@ import {
   WiFiConnectRequest,
   WiFiNetwork
 } from './types';
+import { Profile } from 'meticulous-typescript-profile';
 
 export class ApiResponseError extends Error {
   constructor(
