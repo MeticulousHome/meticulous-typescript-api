@@ -28,14 +28,24 @@ export interface ProfileIdent {
   id: string;
 }
 
-export interface Settings {
+export type SettingsKey =
+  | 'auto_preheat'
+  | 'auto_purge_after_shot'
+  | 'auto_start_shot'
+  | 'disallow_firmware_flashing'
+  | 'enable_sounds'
+  | 'save_debug_shot_data';
+
+export type SettingsType = boolean | number;
+
+export type Settings = Record<SettingsKey, SettingsType> & {
   auto_preheat: number;
   auto_purge_after_shot: boolean;
   auto_start_shot: boolean;
   disallow_firmware_flashing: boolean;
   enable_sounds: boolean;
   save_debug_shot_data: boolean;
-}
+};
 
 export type APMode = 'AP' | 'CLIENT';
 
