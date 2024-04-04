@@ -14,6 +14,10 @@ import {
 
 import { Profile } from 'meticulous-typescript-profile';
 
+export * from './react';
+export * from './types';
+export * from './wrapper';
+
 export default class Api {
   private axiosInstance: AxiosInstance;
   constructor(base_url?: string) {
