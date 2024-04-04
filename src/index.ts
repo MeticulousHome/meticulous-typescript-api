@@ -112,10 +112,14 @@ export default class Api {
   }
 
   async getWiFiQR(): Promise<AxiosResponse<Blob>> {
-    const response = await this.axiosInstance.get('/api/v1/wifi/qr.png', {
+    const response = await this.axiosInstance.get('/api/v1/wifi/config/qr.png', {
       responseType: 'blob'
     });
     return response;
+  }
+
+  getWiFiQRURL(): string {
+    return this.axiosInstance.getUri() + 'api/v1/wifi/config/qr.png';
   }
 
   async listAvailableWiFi(): Promise<AxiosResponse<WiFiNetwork[] | APIError>> {
