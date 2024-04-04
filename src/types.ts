@@ -29,8 +29,12 @@ export interface ProfileIdent {
 }
 
 export interface Settings {
-  // Setting name and value
-  [key: string]: string;
+  auto_preheat: number
+  auto_purge_after_shot: boolean
+  auto_start_shot: boolean
+  disallow_firmware_flashing: boolean
+  enable_sounds: boolean
+  save_debug_shot_data: boolean
 }
 
 export type APMode = 'AP' | 'CLIENT';

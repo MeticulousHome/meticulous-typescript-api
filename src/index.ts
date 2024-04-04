@@ -6,7 +6,7 @@ import {
   ActionType,
   Notification,
   ProfileIdent,
-  Settings as Setting,
+  Settings,
   WiFiConfig,
   WiFiConnectRequest,
   WiFiNetwork
@@ -76,14 +76,14 @@ export default class Api {
 
   async getSettings(
     settingName?: string
-  ): Promise<AxiosResponse<Setting | APIError>> {
+  ): Promise<AxiosResponse<Settings | APIError>> {
     const url = '/api/v1/settings' + (settingName ? `/${settingName}` : '');
     return this.axiosInstance.get(url);
   }
 
   async updateSetting(
-    setting: Setting
-  ): Promise<AxiosResponse<Setting | APIError>> {
+    setting: Partial<Settings>
+  ): Promise<AxiosResponse<Settings | APIError>> {
     return this.axiosInstance.post('/api/v1/settings', setting);
   }
 
