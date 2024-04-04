@@ -40,6 +40,13 @@ interface ApiProps {
   setWiFiConfig: (data: WiFiConfig) => Promise<void>;
   listAvailableWiFi: () => Promise<WiFiNetwork[]>;
   connectToWiFi: (data: WiFiConnectRequest) => Promise<void>;
+
+  // sound functions
+  playSound: (sound: string) => Promise<void>;
+  listSounds: () => Promise<string[]>;
+  listSoundThemes: () => Promise<string[]>;
+  getSoundTheme: () => Promise<string>;
+  setSoundTheme: (theme: string) => Promise<void>;
 }
 
 export function useApi(): ApiProps {
@@ -79,11 +86,20 @@ export function useApi(): ApiProps {
     connectToWiFi: wrapper.connectToWiFi
   });
 
+  const soundOperations = () => ({
+    playSound: wrapper.playSound,
+    listSounds: wrapper.listSounds,
+    listSoundThemes: wrapper.listSoundThemes,
+    setSoundTheme: wrapper.setSoundTheme,
+    getSoundTheme: wrapper.getSoundTheme
+  });
+
   return {
     executeAction,
     ...profileOperations(),
     ...notificationOperations(),
     ...settingsOperations(),
+    ...soundOperations(),
     updateFirmware,
     ...wifiOperations()
   };

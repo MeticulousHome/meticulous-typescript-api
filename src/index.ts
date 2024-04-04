@@ -77,7 +77,7 @@ export default class Api {
   async getSettings(
     settingName?: string
   ): Promise<AxiosResponse<Setting | APIError>> {
-    const url = '/api/v1/settings' + settingName ? `/${settingName}` : '';
+    const url = '/api/v1/settings' + (settingName ? `/${settingName}` : '');
     return this.axiosInstance.get(url);
   }
 
@@ -122,5 +122,22 @@ export default class Api {
     data: WiFiConnectRequest
   ): Promise<AxiosResponse<void | APIError>> {
     return this.axiosInstance.post('/api/v1/wifi/connect', data);
+  }
+
+  async playSound(sound: string): Promise<AxiosResponse<void | APIError>> {
+    return this.axiosInstance.get(`/sounds/play/${sound}`);
+  }
+
+  async listSounds(): Promise<AxiosResponse<string[] | APIError>> {
+    return this.axiosInstance.get('/sounds/list');
+  }
+  async listSoundThemes(): Promise<AxiosResponse<string[] | APIError>> {
+    return this.axiosInstance.get('/sounds/theme/list');
+  }
+  async getSoundTheme(): Promise<AxiosResponse<string | APIError>> {
+    return this.axiosInstance.get('/sounds/theme/get');
+  }
+  async setSoundTheme(theme: string): Promise<AxiosResponse<void | APIError>> {
+    return this.axiosInstance.post(`/sounds/theme/set/${theme}`);
   }
 }

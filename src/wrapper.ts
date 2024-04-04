@@ -281,4 +281,77 @@ export default class ApiWrapper {
       });
     }
   }
+
+  public async playSound(sound: string): Promise<void> {
+    try {
+      const response = await this.api.playSound(sound);
+      if (response.status !== 200) {
+        throw new ApiResponseError(
+          `Error playing sound: ${response.statusText}`,
+          response.data as APIError
+        );
+      }
+    } catch (error) {
+      throw new ApiResponseError('Failed to play sound', { error });
+    }
+  }
+
+  public async listSounds(): Promise<string[]> {
+    try {
+      const response = await this.api.listSounds();
+      if (response.status !== 200) {
+        throw new ApiResponseError(
+          `Error listing sounds: ${response.statusText}`,
+          response.data as APIError
+        );
+      }
+      return response.data as string[];
+    } catch (error) {
+      throw new ApiResponseError('Failed to list sounds', { error });
+    }
+  }
+
+  public async listSoundThemes(): Promise<string[]> {
+    try {
+      const response = await this.api.listSoundThemes();
+      if (response.status !== 200) {
+        throw new ApiResponseError(
+          `Error listing themes: ${response.statusText}`,
+          response.data as APIError
+        );
+      }
+      return response.data as string[];
+    } catch (error) {
+      throw new ApiResponseError('Failed to list themes', { error });
+    }
+  }
+
+  public async getSoundTheme(): Promise<string> {
+    try {
+      const response = await this.api.getSoundTheme();
+      if (response.status !== 200) {
+        throw new ApiResponseError(
+          `Error getting current theme: ${response.statusText}`,
+          response.data as APIError
+        );
+      }
+      return response.data as string;
+    } catch (error) {
+      throw new ApiResponseError('Failed to get current theme', { error });
+    }
+  }
+
+  public async setSoundTheme(theme: string): Promise<void> {
+    try {
+      const response = await this.api.setSoundTheme(theme);
+      if (response.status !== 200) {
+        throw new ApiResponseError(
+          `Error setting theme: ${response.statusText}`,
+          response.data as APIError
+        );
+      }
+    } catch (error) {
+      throw new ApiResponseError('Failed to set theme', { error });
+    }
+  }
 }
