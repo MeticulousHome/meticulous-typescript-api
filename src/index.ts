@@ -106,7 +106,7 @@ export default class Api {
   }
 
   async setWiFiConfig(
-    data: WiFiConfig
+    data: Partial<WiFiConfig>
   ): Promise<AxiosResponse<WiFiConfig | APIError>> {
     return this.axiosInstance.post('/api/v1/wifi/config', data);
   }
