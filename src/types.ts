@@ -47,7 +47,10 @@ export type Settings = Record<SettingsKey, SettingsType> & {
   save_debug_shot_data: boolean;
 };
 
-export type APMode = 'AP' | 'CLIENT';
+export enum APMode {
+  AP = 'AP',
+  CLIENT = 'CLIENT'
+}
 
 export interface WiFiConfig {
   mode: APMode;
