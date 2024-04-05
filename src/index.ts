@@ -112,9 +112,12 @@ export default class Api {
   }
 
   async getWiFiQR(): Promise<AxiosResponse<Blob>> {
-    const response = await this.axiosInstance.get('/api/v1/wifi/config/qr.png', {
-      responseType: 'blob'
-    });
+    const response = await this.axiosInstance.get(
+      '/api/v1/wifi/config/qr.png',
+      {
+        responseType: 'blob'
+      }
+    );
     return response;
   }
 
