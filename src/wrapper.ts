@@ -1,3 +1,4 @@
+import { UUID } from 'meticulous-typescript-profile/dist/uuid';
 import Api from '.';
 import {
   APIError,
@@ -59,6 +60,23 @@ export default class ApiWrapper {
     }
   }
 
+  public async fetchAllProfiles(): Promise<Profile[]> {
+    try {
+      const response = await this.api.fetchAllProfiles();
+      if (response.status !== 200) {
+        throw new ApiResponseError(
+          `Error listing profiles: ${response.statusText}`,
+          response.data as APIError
+        );
+      }
+      return response.data as Profile[];
+    } catch (error) {
+      throw new ApiResponseError('Failed to list profiles', {
+        error: error
+      });
+    }
+  }
+
   public async saveProfile(data: Profile): Promise<ProfileIdent> {
     try {
       const response = await this.api.saveProfile(data);
@@ -76,9 +94,9 @@ export default class ApiWrapper {
     }
   }
 
-  public async loadProfile(data: Profile): Promise<ProfileIdent> {
+  public async loadProfileFromJSON(data: Profile): Promise<ProfileIdent> {
     try {
-      const response = await this.api.loadProfile(data);
+      const response = await this.api.loadProfileFromJSON(data);
       if (response.status !== 200) {
         throw new ApiResponseError(
           `Error loading profile: ${response.statusText}`,
@@ -93,7 +111,24 @@ export default class ApiWrapper {
     }
   }
 
-  public async getProfile(profileId: string): Promise<ProfileIdent> {
+  public async loadProfileById(id: UUID): Promise<ProfileIdent> {
+    try {
+      const response = await this.api.loadProfileByID(id);
+      if (response.status !== 200) {
+        throw new ApiResponseError(
+          `Error loading profile: ${response.statusText}`,
+          response.data as APIError
+        );
+      }
+      return response.data as ProfileIdent;
+    } catch (error) {
+      throw new ApiResponseError('Failed to load profile', {
+        error: error
+      });
+    }
+  }
+
+  public async getProfile(profileId: string): Promise<Profile> {
     try {
       const response = await this.api.getProfile(profileId);
       if (response.status !== 200) {
@@ -102,7 +137,7 @@ export default class ApiWrapper {
           response.data as APIError
         );
       }
-      return response.data as ProfileIdent;
+      return response.data as Profile;
     } catch (error) {
       throw new ApiResponseError('Failed to fetch profile', {
         error: error

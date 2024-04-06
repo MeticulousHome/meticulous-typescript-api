@@ -1,3 +1,4 @@
+import { UUID } from 'meticulous-typescript-profile/dist/uuid';
 import {
   Notification,
   ProfileIdent,
@@ -6,8 +7,7 @@ import {
   WiFiNetwork,
   AcknowledgeNotificationRequest,
   WiFiConnectRequest,
-  ActionType,
-  APIError
+  ActionType
 } from './types';
 import ApiWrapper from './wrapper';
 
@@ -20,9 +20,11 @@ interface ApiProps {
 
   // profile functions
   listProfiles: () => Promise<ProfileIdent[]>;
+  fetchProfiles: () => Promise<Profile[]>;
   saveProfile: (data: Profile) => Promise<ProfileIdent>;
-  loadProfile: (data: Profile) => Promise<ProfileIdent>;
-  getProfile: (profileId: string) => Promise<ProfileIdent>;
+  loadProfileById: (id: UUID) => Promise<ProfileIdent>;
+  loadProfileFromJSON: (data: Profile) => Promise<ProfileIdent>;
+  getProfile: (profileId: string) => Promise<Profile>;
   deleteProfile: (profileId: string) => Promise<ProfileIdent>;
 
   // notification functions
@@ -57,8 +59,10 @@ export function useApi(): ApiProps {
   // Profile Operations
   const profileOperations = () => ({
     listProfiles: wrapper.listProfiles,
+    fetchProfiles: wrapper.fetchAllProfiles,
     saveProfile: wrapper.saveProfile,
-    loadProfile: wrapper.loadProfile,
+    loadProfileById: wrapper.loadProfileById,
+    loadProfileFromJSON: wrapper.loadProfileFromJSON,
     getProfile: wrapper.getProfile,
     deleteProfile: wrapper.deleteProfile
   });

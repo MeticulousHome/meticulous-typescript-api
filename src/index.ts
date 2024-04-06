@@ -13,6 +13,7 @@ import {
 } from './types';
 
 import { Profile } from 'meticulous-typescript-profile';
+import { UUID } from 'meticulous-typescript-profile/dist/uuid';
 
 export * from './react';
 export * from './types';
@@ -40,21 +41,31 @@ export default class Api {
     return this.axiosInstance.get('/api/v1/profile/list');
   }
 
+  async fetchAllProfiles(): Promise<AxiosResponse<Profile[] | APIError>> {
+    return this.axiosInstance.get('/api/v1/profile/list?full=true');
+  }
+
   async saveProfile(
     data: Profile
   ): Promise<AxiosResponse<ProfileIdent | APIError>> {
     return this.axiosInstance.post('/api/v1/profile/save', data);
   }
 
-  async loadProfile(
+  async loadProfileFromJSON(
     data: Profile
   ): Promise<AxiosResponse<ProfileIdent | APIError>> {
     return this.axiosInstance.post('/api/v1/profile/load', data);
   }
 
+  async loadProfileByID(
+    id: UUID
+  ): Promise<AxiosResponse<ProfileIdent | APIError>> {
+    return this.axiosInstance.get(`/api/v1/profile/load/${id.toString()}`);
+  }
+
   async getProfile(
     profileId: string
-  ): Promise<AxiosResponse<ProfileIdent | APIError>> {
+  ): Promise<AxiosResponse<Profile | APIError>> {
     return this.axiosInstance.get(`/api/v1/profile/get/${profileId}`);
   }
 
