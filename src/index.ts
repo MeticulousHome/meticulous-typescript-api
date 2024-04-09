@@ -1,12 +1,19 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { Socket, io } from 'socket.io-client';
+
 import {
   APIError,
   AcknowledgeNotificationRequest,
   ActionResponse,
   ActionType,
+  Actuators,
+  Communication,
+  MachineInfo,
   Notification,
   ProfileIdent,
   Settings,
+  StatusData,
+  Temperatures,
   WiFiConfig,
   WiFiConnectRequest,
   WiFiNetwork
@@ -19,16 +26,54 @@ export * from './react';
 export * from './types';
 export * from './wrapper';
 
+export interface MachineDataClientOptions {
+  onStatus?: (data: StatusData) => void;
+  onTemperatures?: (data: Temperatures) => void;
+  onCommunication?: (data: Communication) => void;
+  onActuators?: (data: Actuators) => void;
+  onMachineInfo?: (data: MachineInfo) => void;
+}
+
 export default class Api {
   private axiosInstance: AxiosInstance;
-  constructor(base_url?: string) {
+  private socket: Socket;
+
+  constructor(
+    private options?: MachineDataClientOptions,
+    base_url?: string
+  ) {
+    const serverURL = base_url || 'http://localhost:8080/';
+
+    // AXIOS
     this.axiosInstance = axios.create({
-      baseURL: base_url || 'http://localhost:8080/',
+      baseURL: serverURL,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json'
       }
     });
+
+    // Socket.io
+    this.socket = io(serverURL);
+
+    if (this.options && this.options.onStatus) {
+      this.socket.on('status', this.options && this.options.onStatus);
+    }
+    if (this.options && this.options.onTemperatures) {
+      this.socket.on('sensors', this.options && this.options.onTemperatures);
+    }
+    if (this.options && this.options.onCommunication) {
+      this.socket.on(
+        'communication',
+        this.options && this.options.onCommunication
+      );
+    }
+    if (this.options && this.options.onActuators) {
+      this.socket.on('actuators', this.options && this.options.onActuators);
+    }
+    if (this.options && this.options.onMachineInfo) {
+      this.socket.on('info', this.options && this.options.onMachineInfo);
+    }
   }
 
   async executeAction(
