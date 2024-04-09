@@ -23,7 +23,30 @@ export class ApiResponseError extends Error {
 }
 
 export default class ApiWrapper {
-  constructor(public api: Api = defaultAPI) {}
+  constructor(public api: Api = defaultAPI) {
+    this.executeAction = this.executeAction.bind(this);
+    this.listProfiles = this.listProfiles.bind(this);
+    this.fetchAllProfiles = this.fetchAllProfiles.bind(this);
+    this.saveProfile = this.saveProfile.bind(this);
+    this.loadProfileFromJSON = this.loadProfileFromJSON.bind(this);
+    this.loadProfileById = this.loadProfileById.bind(this);
+    this.getProfile = this.getProfile.bind(this);
+    this.deleteProfile = this.deleteProfile.bind(this);
+    this.getNotifications = this.getNotifications.bind(this);
+    this.acknowledgeNotification = this.acknowledgeNotification.bind(this);
+    this.getSettings = this.getSettings.bind(this);
+    this.updateSetting = this.updateSetting.bind(this);
+    this.updateFirmware = this.updateFirmware.bind(this);
+    this.getWiFiConfig = this.getWiFiConfig.bind(this);
+    this.setWiFiConfig = this.setWiFiConfig.bind(this);
+    this.listAvailableWiFi = this.listAvailableWiFi.bind(this);
+    this.connectToWiFi = this.connectToWiFi.bind(this);
+    this.playSound = this.playSound.bind(this);
+    this.listSounds = this.listSounds.bind(this);
+    this.listSoundThemes = this.listSoundThemes.bind(this);
+    this.getSoundTheme = this.getSoundTheme.bind(this);
+    this.setSoundTheme = this.setSoundTheme.bind(this);
+  }
 
   public async executeAction(action: ActionType): Promise<void> {
     try {
