@@ -44,13 +44,20 @@ export default class Api {
     const serverURL = base_url || 'http://localhost:8080/';
 
     // AXIOS
-    this.axiosInstance = axios.create({
+    const axiosInstance = axios.create({
       baseURL: serverURL,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json'
       }
     });
+
+    if (!axiosInstance) {
+      console.log('Could not create AxiosInstance!');
+      throw new Error('Failed to create AxisInstance');
+    }
+
+    this.axiosInstance = axiosInstance;
 
     // Socket.io
     this.socket = io(serverURL);
