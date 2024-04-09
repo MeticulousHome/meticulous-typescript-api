@@ -1,4 +1,4 @@
-import Api from '.';
+import Api, { defaultAPI } from '.';
 import {
   APIError,
   ActionType,
@@ -23,11 +23,7 @@ export class ApiResponseError extends Error {
 }
 
 export default class ApiWrapper {
-  public api: Api;
-
-  constructor() {
-    this.api = new Api();
-  }
+  constructor(public api: Api = defaultAPI) {}
 
   public async executeAction(action: ActionType): Promise<void> {
     try {

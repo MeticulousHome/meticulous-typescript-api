@@ -214,3 +214,5 @@ export default class Api {
     return this.axiosInstance.post(`/sounds/theme/set/${theme}`);
   }
 }
+
+export const defaultAPI = new Api();

@@ -1,3 +1,4 @@
+import Api, { defaultAPI } from '.';
 import {
   Notification,
   ProfileIdent,
@@ -50,8 +51,8 @@ interface ApiProps {
   setSoundTheme: (theme: string) => Promise<void>;
 }
 
-export function useApi(): ApiProps {
-  const wrapper = new ApiWrapper();
+export function useApi(api: Api = defaultAPI): ApiProps {
+  const wrapper = new ApiWrapper(api);
 
   const executeAction = wrapper.executeAction;
 
