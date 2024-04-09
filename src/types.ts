@@ -92,3 +92,51 @@ export interface APIError {
   description: string;
   data?: object;
 }
+
+// Socket.io Message types
+
+export interface SensorData {
+  p: number;
+  f: number;
+  w: number;
+  t: number;
+}
+
+export interface StatusData {
+  name: string;
+  sensors: SensorData;
+  time: number; // in ms
+  profile: string;
+}
+
+export interface Temperatures {
+  t_ext_1: number;
+  t_ext_2: number;
+  t_bar_up: number;
+  t_bar_mu: number;
+  t_bar_md: number;
+  t_bar_down: number;
+  t_tube: number;
+  t_valv: number;
+}
+
+export interface Communication {
+  p: number;
+  a_0: number;
+  a_1: number;
+  a_2: number;
+  a_3: number;
+}
+
+export interface Actuators {
+  m_pos: number;
+  m_spd: number;
+  m_pwr: number;
+  m_cur: number;
+  bh_pwr: number;
+}
+
+export interface MachineInfo {
+  software_info: Record<string, unknown>;
+  esp_info: Record<string, unknown>;
+}

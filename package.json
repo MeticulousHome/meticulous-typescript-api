@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "axios": "^1.6.8",
-    "meticulous-typescript-profile": "github:FFFuego/meticulous-typescript-profile#dist"
+    "meticulous-typescript-profile": "github:MeticulousHome/meticulous-typescript-profile#dist",
+    "socket.io-client": "^4.7.5"
   },
   "lint-staged": {
     "*.{ts,tsx}": "prettier --config .prettierrc \"src/**/*.{js,tsx,ts}\" --check --ignore-unknown"
