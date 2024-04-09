@@ -20,7 +20,6 @@ import {
 } from './types';
 
 import { Profile } from 'meticulous-typescript-profile';
-import { UUID } from 'meticulous-typescript-profile/dist/uuid';
 
 export * from './react';
 export * from './types';
@@ -103,7 +102,7 @@ export default class Api {
   }
 
   async loadProfileByID(
-    id: UUID
+    id: string
   ): Promise<AxiosResponse<ProfileIdent | APIError>> {
     return this.axiosInstance.get(`/api/v1/profile/load/${id.toString()}`);
   }

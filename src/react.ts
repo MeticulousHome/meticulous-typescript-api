@@ -1,4 +1,3 @@
-import { UUID } from 'meticulous-typescript-profile/dist/uuid';
 import {
   Notification,
   ProfileIdent,
@@ -22,7 +21,7 @@ interface ApiProps {
   listProfiles: () => Promise<ProfileIdent[]>;
   fetchProfiles: () => Promise<Profile[]>;
   saveProfile: (data: Profile) => Promise<ProfileIdent>;
-  loadProfileById: (id: UUID) => Promise<ProfileIdent>;
+  loadProfileById: (id: string) => Promise<ProfileIdent>;
   loadProfileFromJSON: (data: Profile) => Promise<ProfileIdent>;
   getProfile: (profileId: string) => Promise<Profile>;
   deleteProfile: (profileId: string) => Promise<ProfileIdent>;

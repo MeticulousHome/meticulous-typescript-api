@@ -1,4 +1,3 @@
-import { UUID } from 'meticulous-typescript-profile/dist/uuid';
 import Api from '.';
 import {
   APIError,
@@ -111,7 +110,7 @@ export default class ApiWrapper {
     }
   }
 
-  public async loadProfileById(id: UUID): Promise<ProfileIdent> {
+  public async loadProfileById(id: string): Promise<ProfileIdent> {
     try {
       const response = await this.api.loadProfileByID(id);
       if (response.status !== 200) {
