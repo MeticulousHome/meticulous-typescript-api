@@ -23,7 +23,11 @@ export class ApiResponseError extends Error {
 }
 
 export default class ApiWrapper {
-  public api = new Api();
+  public api: Api;
+
+  constructor() {
+    this.api = new Api();
+  }
 
   public async executeAction(action: ActionType): Promise<void> {
     try {
