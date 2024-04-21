@@ -35,13 +35,16 @@ export interface MachineDataClientOptions {
 
 export default class Api {
   private axiosInstance: AxiosInstance;
-  private socket: Socket;
+  private socket: Socket = undefined;
+
+  private serverURL: string;
 
   constructor(
     private options?: MachineDataClientOptions,
     base_url?: string
   ) {
     const serverURL = base_url || 'http://localhost:8080/';
+    this.serverURL = serverURL;
 
     // AXIOS
     this.axiosInstance = axios.create({
@@ -52,8 +55,23 @@ export default class Api {
       }
     });
 
+
+  }
+
+  disconnectSocket() {
+    if (this.socket !== undefined) {
+      this.socket.disconnect();
+      this.socket = undefined;
+    }
+  }
+
+  getSocket() {
+      return this.socket;
+  }
+
+  connectToSocket() {
     // Socket.io
-    this.socket = io(serverURL);
+    this.socket = io(this.serverURL);
 
     if (this.options && this.options.onStatus) {
       this.socket.on('status', this.options && this.options.onStatus);
@@ -63,8 +81,8 @@ export default class Api {
     }
     if (this.options && this.options.onCommunication) {
       this.socket.on(
-        'communication',
-        this.options && this.options.onCommunication
+          'communication',
+          this.options && this.options.onCommunication
       );
     }
     if (this.options && this.options.onActuators) {
