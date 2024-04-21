@@ -35,7 +35,7 @@ export interface MachineDataClientOptions {
 
 export default class Api {
   private axiosInstance: AxiosInstance;
-  private socket: Socket = undefined;
+  private socket: Socket | undefined = undefined;
 
   private serverURL: string;
 
