@@ -215,22 +215,22 @@ export default class Api {
   }
 
   async playSound(sound: string): Promise<AxiosResponse<void | APIError>> {
-    return this.axiosInstance.get(`/sounds/play/${sound}`);
+    return this.axiosInstance.get(`/api/v1/sounds/play/${sound}`);
   }
 
   async listSounds(): Promise<AxiosResponse<string[] | APIError>> {
-    return this.axiosInstance.get('/sounds/list');
+    return this.axiosInstance.get('/api/v1/sounds/list');
   }
 
   async listSoundThemes(): Promise<AxiosResponse<string[] | APIError>> {
-    return this.axiosInstance.get('/sounds/theme/list');
+    return this.axiosInstance.get('/api/v1/sounds/theme/list');
   }
 
   async getSoundTheme(): Promise<AxiosResponse<string | APIError>> {
-    return this.axiosInstance.get('/sounds/theme/get');
+    return this.axiosInstance.get('/api/v1/sounds/theme/get');
   }
 
   async setSoundTheme(theme: string): Promise<AxiosResponse<void | APIError>> {
-    return this.axiosInstance.post(`/sounds/theme/set/${theme}`);
+    return this.axiosInstance.post(`/api/v1/sounds/theme/set/${theme}`);
   }
 }
