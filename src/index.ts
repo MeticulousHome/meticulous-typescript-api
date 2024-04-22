@@ -206,6 +206,14 @@ export default class Api {
     return this.axiosInstance.post('/api/v1/wifi/connect', data);
   }
 
+  async deleteWifi({
+    ssid
+  }: {
+    ssid: string;
+  }): Promise<AxiosResponse<void | APIError>> {
+    return this.axiosInstance.post('/api/v1/wifi/delete', { ssid });
+  }
+
   async playSound(sound: string): Promise<AxiosResponse<void | APIError>> {
     return this.axiosInstance.get(`/sounds/play/${sound}`);
   }
