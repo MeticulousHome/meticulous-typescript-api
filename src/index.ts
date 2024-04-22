@@ -225,4 +225,12 @@ export default class Api {
   async setSoundTheme(theme: string): Promise<AxiosResponse<void | APIError>> {
     return this.axiosInstance.post(`/sounds/theme/set/${theme}`);
   }
+
+  async deleteWifi({
+    ssid
+  }: {
+    ssid: string;
+  }): Promise<AxiosResponse<void | APIError>> {
+    return this.axiosInstance.post('/api/v1/wifi/delete');
+  }
 }
