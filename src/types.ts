@@ -1,3 +1,5 @@
+import { Profile } from 'meticulous-typescript-profile';
+
 export type ActionType = 'start' | 'stop' | 'reset' | 'tare' | 'calibration';
 
 export interface ActionResponse {
@@ -24,8 +26,8 @@ export interface AcknowledgeNotificationRequest {
 }
 
 export interface ProfileIdent {
-  name: string;
-  id: string;
+  change_id: string;
+  profile: Profile;
 }
 
 export type SettingsKey =
