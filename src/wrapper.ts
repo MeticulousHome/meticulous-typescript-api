@@ -144,6 +144,20 @@ export default class ApiWrapper {
     }
   }
 
+  public async getLastProfile(): Promise<void> {
+    try {
+      const response = await this.api.getLastProfile();
+      if (response.status !== 200) {
+        throw new ApiResponseError(
+          `Error fetching last profile: ${response.statusText}`,
+          response.data as APIError
+        );
+      }
+    } catch (error) {
+      throw new ApiResponseError('Failed to get last profile', { error });
+    }
+  }
+
   public async deleteProfile(profileId: string): Promise<ProfileIdent> {
     try {
       const response = await this.api.deleteProfile(profileId);

@@ -135,6 +135,10 @@ export default class Api {
     return this.axiosInstance.delete(`/api/v1/profile/delete/${profileId}`);
   }
 
+  async getLastProfile(): Promise<AxiosResponse<Profile | APIError>> {
+    return this.axiosInstance.get('/api/v1/profile/last');
+  }
+
   async getNotifications(
     acknowledged: boolean
   ): Promise<AxiosResponse<Notification[] | APIError>> {
