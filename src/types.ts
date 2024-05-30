@@ -30,6 +30,11 @@ export interface ProfileIdent {
   profile: Profile;
 }
 
+export interface LastProfileIdent {
+  load_time: number;
+  profile: Profile;
+}
+
 export type SettingsKey =
   | 'auto_preheat'
   | 'auto_purge_after_shot'

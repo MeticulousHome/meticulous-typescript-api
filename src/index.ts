@@ -8,6 +8,7 @@ import {
   ActionType,
   Actuators,
   Communication,
+  LastProfileIdent,
   MachineInfo,
   Notification,
   ProfileIdent,
@@ -135,7 +136,7 @@ export default class Api {
     return this.axiosInstance.delete(`/api/v1/profile/delete/${profileId}`);
   }
 
-  async getLastProfile(): Promise<AxiosResponse<Profile | APIError>> {
+  async getLastProfile(): Promise<AxiosResponse<LastProfileIdent | APIError>> {
     return this.axiosInstance.get('/api/v1/profile/last');
   }
 
