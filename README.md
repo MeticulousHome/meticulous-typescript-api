@@ -8,5 +8,5 @@ During development not releases are pushed to any registry. Instead the build is
 To install it from there run
 
 ```typescript
-npm install "git@github.com:FFFuego/meticulous-typescript-api.git#dist"
+npm install "git@github.com:MeticulousHome/meticulous-typescript-api.git#dist"
 ```
