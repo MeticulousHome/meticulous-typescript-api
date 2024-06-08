@@ -34,6 +34,7 @@ export interface MachineDataClientOptions {
   onActuators?: (data: Actuators) => void;
   onMachineInfo?: (data: MachineInfo) => void;
   onProfileUpdate?: (data: ProfileUpdate) => void;
+  onNotification?: (data: Notification) => void;
 }
 
 export default class Api {
