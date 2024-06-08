@@ -109,11 +109,17 @@ export interface SensorData {
   t: number;
 }
 
+export type MachineState = 'idle' | 'purge' | 'home' | 'brewing' | 'error';
+
 export interface StatusData {
   name: string;
   sensors: SensorData;
   time: number; // in ms
   profile: string;
+  loaded_profile: string; // name of the profile
+  id: string; // id of the loaded profile
+  state: MachineState;
+  extracting: boolean;
 }
 
 export interface Temperatures {
