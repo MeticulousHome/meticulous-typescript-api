@@ -164,3 +164,16 @@ export interface MachineInfo {
   software_info: SoftwareInfo;
   esp_info: ESPInfo;
 }
+
+export type ProfileEvent =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'full_reload'
+  | 'load';
+
+export interface ProfileUpdate {
+  type: ProfileEvent;
+  profile_id?: string;
+  change_id?: string;
+}

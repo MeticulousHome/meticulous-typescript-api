@@ -12,6 +12,7 @@ import {
   MachineInfo,
   Notification,
   ProfileIdent,
+  ProfileUpdate,
   Settings,
   StatusData,
   Temperatures,
@@ -32,6 +33,7 @@ export interface MachineDataClientOptions {
   onCommunication?: (data: Communication) => void;
   onActuators?: (data: Actuators) => void;
   onMachineInfo?: (data: MachineInfo) => void;
+  onProfileUpdate?: (data: ProfileUpdate) => void;
 }
 
 export default class Api {
