@@ -149,7 +149,18 @@ export interface Actuators {
   bh_pwr: number;
 }
 
+export interface SoftwareInfo {
+  name: string;
+  lcdV: number;
+}
+
+export interface ESPInfo {
+  firmwareV: string;
+  espPinout: number;
+  mainVoltage: number;
+}
+
 export interface MachineInfo {
-  software_info: Record<string, unknown>;
-  esp_info: Record<string, unknown>;
+  software_info: SoftwareInfo;
+  esp_info: ESPInfo;
 }
