@@ -160,7 +160,7 @@ export interface ESPInfo {
   mainVoltage: number;
 }
 
-export interface MachineInfo {
+export interface MachineInfoEvent {
   software_info: SoftwareInfo;
   esp_info: ESPInfo;
 }
@@ -178,7 +178,7 @@ export interface ProfileUpdate {
   change_id?: string;
 }
 
-export interface FirmwareInfo {
+export interface DeviceInfo {
   name: string;
   hostname: string;
   firmware: string;

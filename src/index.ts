@@ -8,8 +8,9 @@ import {
   ActionType,
   Actuators,
   Communication,
+  DeviceInfo,
   LastProfileIdent,
-  MachineInfo,
+  MachineInfoEvent,
   Notification,
   ProfileIdent,
   ProfileUpdate,
@@ -18,8 +19,7 @@ import {
   Temperatures,
   WiFiConfig,
   WiFiConnectRequest,
-  WiFiNetwork,
-  FirmwareInfo
+  WiFiNetwork
 } from './types';
 
 import { Profile } from 'meticulous-typescript-profile';
@@ -33,7 +33,7 @@ export interface MachineDataClientOptions {
   onTemperatures?: (data: Temperatures) => void;
   onCommunication?: (data: Communication) => void;
   onActuators?: (data: Actuators) => void;
-  onMachineInfo?: (data: MachineInfo) => void;
+  onMachineInfo?: (data: MachineInfoEvent) => void;
   onProfileUpdate?: (data: ProfileUpdate) => void;
   onNotification?: (data: Notification) => void;
 }
@@ -243,7 +243,7 @@ export default class Api {
     return this.axiosInstance.post(`/api/v1/sounds/theme/set/${theme}`);
   }
 
-  async getFirmware(): Promise<AxiosResponse<FirmwareInfo | APIError>> {
+  async getDeviceInfo(): Promise<AxiosResponse<DeviceInfo | APIError>> {
     return this.axiosInstance.get('/api/v1/machine');
   }
 }
