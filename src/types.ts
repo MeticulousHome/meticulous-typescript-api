@@ -177,3 +177,12 @@ export interface ProfileUpdate {
   profile_id?: string;
   change_id?: string;
 }
+
+export interface FirmwareInfo {
+  name: string;
+  hostname: string;
+  firmware: string;
+  color: string;
+  model_version: string;
+  serial: string;
+}

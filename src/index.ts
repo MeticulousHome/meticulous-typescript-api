@@ -18,7 +18,8 @@ import {
   Temperatures,
   WiFiConfig,
   WiFiConnectRequest,
-  WiFiNetwork
+  WiFiNetwork,
+  FirmwareInfo
 } from './types';
 
 import { Profile } from 'meticulous-typescript-profile';
@@ -240,5 +241,9 @@ export default class Api {
 
   async setSoundTheme(theme: string): Promise<AxiosResponse<void | APIError>> {
     return this.axiosInstance.post(`/api/v1/sounds/theme/set/${theme}`);
+  }
+
+  async getFirmware(): Promise<AxiosResponse<FirmwareInfo | APIError>> {
+    return this.axiosInstance.get('/api/v1/machine');
   }
 }
