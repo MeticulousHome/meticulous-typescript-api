@@ -144,6 +144,31 @@ export default class Api {
     return this.axiosInstance.get('/api/v1/profile/last');
   }
 
+  async getProfileDefaultImages(): Promise<AxiosResponse<string[] | APIError>> {
+    return this.axiosInstance.get('/api/v1/profile/image');
+  }
+
+  getProfileImageUrl(image: string): string {
+    if (image.startsWith('data:')) {
+      return image;
+    }
+    const url = '/api/v1/profile/image/';
+    if (!image.startsWith(url)) {
+      image = url + image;
+    }
+    return image;
+  }
+
+  async getProfileImage(image: string): Promise<AxiosResponse<Blob>> {
+    const response = await this.axiosInstance.get(
+      this.getProfileImageUrl(image),
+      {
+        responseType: 'blob'
+      }
+    );
+    return response;
+  }
+
   async getNotifications(
     acknowledged: boolean
   ): Promise<AxiosResponse<Notification[] | APIError>> {
