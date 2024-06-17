@@ -227,7 +227,10 @@ export default class Api {
   }
 
   getWiFiQRURL(): string {
-    return this.axiosInstance.getUri() + 'api/v1/wifi/config/qr.png';
+    return new URL(
+      '/api/v1/wifi/config/qr.png',
+      this.axiosInstance.getUri()
+    ).toString();
   }
 
   async listAvailableWiFi(): Promise<AxiosResponse<WiFiNetwork[] | APIError>> {
