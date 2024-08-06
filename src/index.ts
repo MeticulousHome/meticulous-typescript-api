@@ -24,9 +24,7 @@ import {
 
 import { Profile } from 'meticulous-typescript-profile';
 
-export * from './react';
 export * from './types';
-export * from './wrapper';
 
 export interface MachineDataClientOptions {
   onStatus?: (data: StatusData) => void;
