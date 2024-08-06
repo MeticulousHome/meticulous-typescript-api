@@ -1,6 +1,6 @@
 {
   "name": "meticulous-api",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Typescript based package to interact with the meticulous API",
   "author": "Mimoja <mimoja@meticuloushome.com>",
   "license": "GPLv3",
