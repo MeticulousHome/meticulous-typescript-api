@@ -22,7 +22,7 @@ import {
   WiFiNetwork
 } from './types';
 
-import { Profile } from 'meticulous-typescript-profile';
+import { Profile, DefaultProfile } from 'meticulous-typescript-profile';
 
 export * from './types';
 
@@ -271,5 +271,11 @@ export default class Api {
 
   async getDeviceInfo(): Promise<AxiosResponse<DeviceInfo | APIError>> {
     return this.axiosInstance.get('/api/v1/machine');
+  }
+
+  async getDefaultProfiles(): Promise<
+    AxiosResponse<DefaultProfile[] | APIError>
+  > {
+    return this.axiosInstance.get('/api/v1/profile/defaults');
   }
 }
