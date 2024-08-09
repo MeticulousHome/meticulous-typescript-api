@@ -186,3 +186,84 @@ export interface DeviceInfo {
   model_version: string;
   serial: string;
 }
+
+export interface HistoryProfile extends Profile {
+  db_key: number;
+}
+
+export interface HistoryDataPoint {
+  shot: {
+    pressure: number;
+    flow: number;
+    weight: number;
+    temperature: number;
+  };
+  time: number;
+  status: string;
+  sensors: {
+    external_1: number;
+    external_2: number;
+    bar_up: number;
+    bar_mid_up: number;
+    bar_mid_down: number;
+    bar_down: number;
+    tube: number;
+    valve: number;
+    motor_position: number;
+    motor_speed: number;
+    motor_power: number;
+    motor_current: number;
+    bandheater_power: number;
+    preassure_sensor: number;
+    adc_0: number;
+    adc_1: number;
+    adc_2: number;
+    adc_3: number;
+    water_status: boolean;
+  };
+}
+
+export interface HistoryBaseEntry {
+  id: string;
+  db_key: number | null;
+  time: number;
+  file: string | null;
+  name: string;
+  profile: HistoryProfile;
+}
+
+export interface HistoryEntry extends HistoryBaseEntry {
+  data: HistoryDataPoint[];
+}
+
+export interface HistoryResponse {
+  history: HistoryEntry[];
+}
+
+export interface HistoryListingEntry extends HistoryBaseEntry {
+  data: null;
+}
+
+export interface HistoryListingResponse {
+  history: HistoryListingEntry[];
+}
+
+export interface HistoryQueryParams {
+  query: string;
+  ids: number[];
+  start_date: string;
+  end_date: string;
+  order_by: ('profile' | 'date')[];
+  sort: 'asc' | 'desc';
+  max_results: number;
+  dump_data: boolean;
+}
+
+export interface HistoryStats {
+  totalSavedShots: number;
+  byProfile: {
+    name: string;
+    count: number;
+    profileVersions: number;
+  }[];
+}

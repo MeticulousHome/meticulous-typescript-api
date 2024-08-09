@@ -9,6 +9,11 @@ import {
   Actuators,
   Communication,
   DeviceInfo,
+  HistoryEntry,
+  HistoryListingResponse,
+  HistoryQueryParams,
+  HistoryResponse,
+  HistoryStats,
   LastProfileIdent,
   MachineInfoEvent,
   Notification,
@@ -275,5 +280,31 @@ export default class Api {
 
   async getDefaultProfiles(): Promise<AxiosResponse<Profile[] | APIError>> {
     return this.axiosInstance.get('/api/v1/profile/defaults');
+  }
+
+  async getHistoryShortListing(): Promise<
+    AxiosResponse<HistoryListingResponse>
+  > {
+    return this.axiosInstance.get('/api/v1/history');
+  }
+
+  async searchHistory(
+    query: HistoryQueryParams
+  ): Promise<AxiosResponse<HistoryResponse>> {
+    return this.axiosInstance.post('/history/search', {
+      params: { query }
+    });
+  }
+
+  async getCurrentShot(): Promise<AxiosResponse<HistoryEntry | null>> {
+    return this.axiosInstance.get('/history/current');
+  }
+
+  async getLastShot(): Promise<AxiosResponse<HistoryEntry | null>> {
+    return this.axiosInstance.get('/history/current');
+  }
+
+  async getHistoryStatistics(): Promise<AxiosResponse<HistoryStats>> {
+    return this.axiosInstance.get('/history/stats');
   }
 }
