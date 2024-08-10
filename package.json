@@ -1,5 +1,5 @@
 {
-  "name": "meticulous-api",
+  "name": "@meticulous-home/espresso-api",
   "version": "0.2.2",
   "description": "Typescript based package to interact with the meticulous API",
   "author": "Mimoja <mimoja@meticuloushome.com>",
@@ -7,6 +7,9 @@
   "private": false,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "build": "tsc",
     "check-types": "tsc --noEmit",

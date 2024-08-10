@@ -1,0 +1,46 @@
+name: Deployment
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deployment:
+    name: Release new version
+    if: github.repository_owner == 'MeticulousHome'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@meticulous-home'
+          #token: ${{ secrets.NPM_TOKEN }}
+
+      - name: Install dependencies
+        run: yarn --frozen-lockfile --non-interactive --ignore-scripts
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to NPM
+        id: publish
+        uses: JS-DevTools/npm-publish@v3
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          access: public
+          ignore-scripts: true
+
+      - name: "Create GitHub release: ${{ steps.publish.outputs.version }}"
+        uses: softprops/action-gh-release@v2
+        with:
+          files: package.json dist/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: "v${{ steps.publish.outputs.version }}"
+          generate_release_notes: true
