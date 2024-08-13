@@ -24,7 +24,7 @@ jobs:
           #token: ${{ secrets.NPM_TOKEN }}
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile --non-interactive --ignore-scripts
+        run: npm ci
 
       - name: Build
         run: npm run build
@@ -37,10 +37,10 @@ jobs:
           access: public
           ignore-scripts: true
 
-      - name: "Create GitHub release: ${{ steps.publish.outputs.version }}"
-        uses: softprops/action-gh-release@v2
-        with:
-          files: package.json dist/*
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: "v${{ steps.publish.outputs.version }}"
-          generate_release_notes: true
+      # - name: "Create GitHub release: ${{ steps.publish.outputs.version }}"
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: package.json dist/*
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     tag_name: "v${{ steps.publish.outputs.version }}"
+      #     generate_release_notes: true
