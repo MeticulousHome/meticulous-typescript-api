@@ -9,8 +9,7 @@ jobs:
     name: Release new version
     if: github.repository_owner == 'MeticulousHome'
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,6 +27,15 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Commit and Push to Built Branch
+        run: |
+          git config --global user.email "mimoja@meticuloushome.com"
+          git config --global user.name "Mimoja Build Bot"
+          git checkout -b dist
+          git add -f dist/
+          git commit -m "Build and deploy"
+          git push -f origin dist
 
       - name: Publish to NPM
         id: publish
