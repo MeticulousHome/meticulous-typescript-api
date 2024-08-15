@@ -307,7 +307,7 @@ export default class Api {
   }
 
   async getLastShot(): Promise<AxiosResponse<HistoryEntry | null>> {
-    return this.axiosInstance.get('/api/v1/history/current');
+    return this.axiosInstance.get('/api/v1/history/last');
   }
 
   async getHistoryStatistics(): Promise<AxiosResponse<HistoryStats>> {
