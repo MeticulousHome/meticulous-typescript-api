@@ -291,20 +291,20 @@ export default class Api {
   async searchHistory(
     query: HistoryQueryParams
   ): Promise<AxiosResponse<HistoryResponse>> {
-    return this.axiosInstance.post('/history/search', {
+    return this.axiosInstance.post('/api/v1/history/search', {
       params: { query }
     });
   }
 
   async getCurrentShot(): Promise<AxiosResponse<HistoryEntry | null>> {
-    return this.axiosInstance.get('/history/current');
+    return this.axiosInstance.get('/api/v1/history/current');
   }
 
   async getLastShot(): Promise<AxiosResponse<HistoryEntry | null>> {
-    return this.axiosInstance.get('/history/current');
+    return this.axiosInstance.get('/api/v1/history/current');
   }
 
   async getHistoryStatistics(): Promise<AxiosResponse<HistoryStats>> {
-    return this.axiosInstance.get('/history/stats');
+    return this.axiosInstance.get('/api/v1/history/stats');
   }
 }
