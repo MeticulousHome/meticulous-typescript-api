@@ -289,11 +289,17 @@ export default class Api {
   }
 
   async searchHistory(
-    query: HistoryQueryParams
+    query: Partial<HistoryQueryParams>
   ): Promise<AxiosResponse<HistoryResponse>> {
-    return this.axiosInstance.post('/api/v1/history/search', {
+    return this.axiosInstance.post('/api/v1/history', {
       params: { query }
     });
+  }
+
+  async searchHistoricalProfiles(
+    query: string
+  ): Promise<AxiosResponse<HistoryListingResponse>> {
+    return this.axiosInstance.get('/api/v1/history/search?query=' + query);
   }
 
   async getCurrentShot(): Promise<AxiosResponse<HistoryEntry | null>> {
