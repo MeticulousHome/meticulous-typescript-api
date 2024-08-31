@@ -27,7 +27,7 @@ import {
   WiFiNetwork
 } from './types';
 
-import { Profile } from 'meticulous-typescript-profile';
+import { Profile } from '@meticulous-home/espresso-profile';
 
 export * from './types';
 

@@ -22,8 +22,8 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@meticulous-home/espresso-profile": "^0.4.2",
     "axios": "^1.6.8",
-    "meticulous-typescript-profile": "github:MeticulousHome/meticulous-typescript-profile#dist",
     "socket.io-client": "^4.7.5"
   },
   "lint-staged": {

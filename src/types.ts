@@ -1,4 +1,4 @@
-import { Profile } from 'meticulous-typescript-profile';
+import { Profile } from '@meticulous-home/espresso-profile';
 
 export type ActionType = 'start' | 'stop' | 'reset' | 'tare' | 'calibration';
 
