@@ -24,7 +24,8 @@ import {
   Temperatures,
   WiFiConfig,
   WiFiCredentials,
-  WiFiNetwork
+  WiFiNetwork,
+  WifiStatus
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -209,7 +210,7 @@ export default class Api {
     });
   }
 
-  async getWiFiConfig(): Promise<AxiosResponse<WiFiConfig | APIError>> {
+  async getWiFiConfig(): Promise<AxiosResponse<WifiStatus | APIError>> {
     return this.axiosInstance.get('/api/v1/wifi/config');
   }
 
