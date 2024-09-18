@@ -23,7 +23,7 @@ import {
   StatusData,
   Temperatures,
   WiFiConfig,
-  WiFiConnectRequest,
+  WiFiCredentials,
   WiFiNetwork
 } from './types';
 
@@ -241,7 +241,7 @@ export default class Api {
   }
 
   async connectToWiFi(
-    data: WiFiConnectRequest
+    data: WiFiCredentials
   ): Promise<AxiosResponse<void | APIError>> {
     return this.axiosInstance.post('/api/v1/wifi/connect', data);
   }

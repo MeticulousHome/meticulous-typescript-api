@@ -65,10 +65,30 @@ export interface WiFiConfig {
   apPassword: string;
 }
 
-export interface WiFiConnectRequest {
+// WEP is not supported, we only log it for now
+export type WIFI_TYPE = 'PSK' | '802.1X' | 'OPEN' | 'WEP';
+
+export interface BaseWiFiCredentials {
+  type?: WIFI_TYPE;
+  security: string;
   ssid: string;
+}
+
+export interface WifiWpaEnterpriseCredentials extends BaseWiFiCredentials {
+  type: '802.1X';
+  //TODO add more fields after implementation
+}
+
+export interface WifiOpenCredentials extends BaseWiFiCredentials {
+  type: 'OPEN';
+}
+
+export interface WifiWpaPskCredentials extends BaseWiFiCredentials {
+  type: 'PSK';
   password: string;
 }
+
+export type WiFiCredentials = WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials;
 
 export interface WifiSystemStatus {
   connected: boolean;
@@ -85,9 +105,12 @@ export interface WifiSystemStatus {
 export interface WifiStatus {
   config: WiFiConfig;
   status: WifiSystemStatus;
+  known_wifis: { [key: string]: WiFiCredentials | string };
 }
 
 export interface WiFiNetwork {
+  type?: WIFI_TYPE;
+  security? : string;
   ssid: string;
   signal: number;
   rate: number;
