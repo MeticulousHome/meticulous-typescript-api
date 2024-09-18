@@ -210,7 +210,7 @@ export default class Api {
     });
   }
 
-  async getWiFiConfig(): Promise<AxiosResponse<WifiStatus | APIError>> {
+  async getWiFiStatus(): Promise<AxiosResponse<WifiStatus | APIError>> {
     return this.axiosInstance.get('/api/v1/wifi/config');
   }
 
