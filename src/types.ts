@@ -88,7 +88,10 @@ export interface WifiWpaPskCredentials extends BaseWiFiCredentials {
   password: string;
 }
 
-export type WiFiCredentials = WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials;
+export type WiFiCredentials =
+  | WifiWpaEnterpriseCredentials
+  | WifiOpenCredentials
+  | WifiWpaPskCredentials;
 
 export interface WifiSystemStatus {
   connected: boolean;
@@ -110,7 +113,7 @@ export interface WifiStatus {
 
 export interface WiFiNetwork {
   type?: WIFI_TYPE;
-  security? : string;
+  security?: string;
   ssid: string;
   signal: number;
   rate: number;
