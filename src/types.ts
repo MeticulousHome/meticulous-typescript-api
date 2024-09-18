@@ -70,7 +70,7 @@ export type WIFI_TYPE = 'PSK' | '802.1X' | 'OPEN' | 'WEP';
 
 export interface BaseWiFiCredentials {
   type?: WIFI_TYPE;
-  security: string;
+  security?: string;
   ssid: string;
 }
 
