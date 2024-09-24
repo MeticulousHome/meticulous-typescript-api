@@ -1,6 +1,6 @@
 import { Profile } from '@meticulous-home/espresso-profile';
 
-export type ActionType = 'start' | 'stop' | 'reset' | 'tare' | 'calibration';
+export type ActionType = 'start' | 'stop' | 'reset' | 'tare' | 'calibration' | 'scale_master_calibration';
 
 export interface ActionResponse {
   action?: string;
