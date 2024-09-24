@@ -47,7 +47,8 @@ export type SettingsKey =
   | 'auto_start_shot'
   | 'disallow_firmware_flashing'
   | 'enable_sounds'
-  | 'save_debug_shot_data';
+  | 'save_debug_shot_data'
+  | 'update_channel';
 
 export type SettingsType = boolean | number;
 
