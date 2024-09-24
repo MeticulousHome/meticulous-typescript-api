@@ -50,7 +50,7 @@ export type SettingsKey =
   | 'save_debug_shot_data'
   | 'update_channel';
 
-export type SettingsType = boolean | number;
+export type SettingsType = boolean | number | string;
 
 export type Settings = Record<SettingsKey, SettingsType> & {
   auto_preheat: number;
