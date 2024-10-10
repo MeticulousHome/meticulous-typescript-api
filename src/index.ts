@@ -314,4 +314,8 @@ export default class Api {
   async getHistoryStatistics(): Promise<AxiosResponse<HistoryStats>> {
     return this.axiosInstance.get('/api/v1/history/stats');
   }
+
+  async getOSStatus(): Promise<AxiosResponse<HistoryStats>> {
+    return this.axiosInstance.get('/api/v1/machine/OS_update_status');
+  }
 }
