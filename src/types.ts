@@ -300,3 +300,9 @@ export interface HistoryStats {
     profileVersions: number;
   }[];
 }
+
+export interface OSStatusResponse {
+  progress?: number;
+  status?: string;
+  info?: string;
+}
