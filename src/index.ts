@@ -47,7 +47,7 @@ export default class Api {
   private socket: Socket | undefined = undefined;
 
   private serverURL: string;
-  private version: string = 'v1'
+  private version: string = 'v1';
 
   constructor(
     private options?: MachineDataClientOptions,
@@ -112,7 +112,9 @@ export default class Api {
   }
 
   async fetchAllProfiles(): Promise<AxiosResponse<Profile[] | APIError>> {
-    return this.axiosInstance.get(`/api/${this.version}/profile/list?full=true`);
+    return this.axiosInstance.get(
+      `/api/${this.version}/profile/list?full=true`
+    );
   }
 
   async saveProfile(
@@ -130,19 +132,25 @@ export default class Api {
   async loadProfileByID(
     id: string
   ): Promise<AxiosResponse<ProfileIdent | APIError>> {
-    return this.axiosInstance.get(`/api/${this.version}/profile/load/${id.toString()}`);
+    return this.axiosInstance.get(
+      `/api/${this.version}/profile/load/${id.toString()}`
+    );
   }
 
   async getProfile(
     profileId: string
   ): Promise<AxiosResponse<Profile | APIError>> {
-    return this.axiosInstance.get(`/api/${this.version}/profile/get/${profileId}`);
+    return this.axiosInstance.get(
+      `/api/${this.version}/profile/get/${profileId}`
+    );
   }
 
   async deleteProfile(
     profileId: string
   ): Promise<AxiosResponse<ProfileIdent | APIError>> {
-    return this.axiosInstance.delete(`/api/${this.version}/profile/delete/${profileId}`);
+    return this.axiosInstance.delete(
+      `/api/${this.version}/profile/delete/${profileId}`
+    );
   }
 
   async getLastProfile(): Promise<AxiosResponse<LastProfileIdent | APIError>> {
@@ -185,13 +193,17 @@ export default class Api {
   async acknowledgeNotification(
     data: AcknowledgeNotificationRequest
   ): Promise<AxiosResponse<void | APIError>> {
-    return this.axiosInstance.post(`/api/${this.version}/notifications/acknowledge`, data);
+    return this.axiosInstance.post(
+      `/api/${this.version}/notifications/acknowledge`,
+      data
+    );
   }
 
   async getSettings(
     settingName?: string
   ): Promise<AxiosResponse<Settings | APIError>> {
-    const url = `/api/${this.version}/settings` + (settingName ? `/${settingName}` : '');
+    const url =
+      `/api/${this.version}/settings` + (settingName ? `/${settingName}` : '');
     return this.axiosInstance.get(url);
   }
 
@@ -204,11 +216,15 @@ export default class Api {
   async updateFirmware(
     formData: FormData
   ): Promise<AxiosResponse<void | APIError>> {
-    return this.axiosInstance.post(`/api/${this.version}/update/firmware`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
+    return this.axiosInstance.post(
+      `/api/${this.version}/update/firmware`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       }
-    });
+    );
   }
 
   async getWiFiStatus(): Promise<AxiosResponse<WifiStatus | APIError>> {
@@ -253,7 +269,9 @@ export default class Api {
   }: {
     ssid: string;
   }): Promise<AxiosResponse<void | APIError>> {
-    return this.axiosInstance.post(`/api/${this.version}/wifi/delete`, { ssid });
+    return this.axiosInstance.post(`/api/${this.version}/wifi/delete`, {
+      ssid
+    });
   }
 
   async playSound(sound: string): Promise<AxiosResponse<void | APIError>> {
@@ -273,7 +291,9 @@ export default class Api {
   }
 
   async setSoundTheme(theme: string): Promise<AxiosResponse<void | APIError>> {
-    return this.axiosInstance.post(`/api/${this.version}/sounds/theme/set/${theme}`);
+    return this.axiosInstance.post(
+      `/api/${this.version}/sounds/theme/set/${theme}`
+    );
   }
 
   async getDeviceInfo(): Promise<AxiosResponse<DeviceInfo | APIError>> {
@@ -301,7 +321,9 @@ export default class Api {
   async searchHistoricalProfiles(
     query: string
   ): Promise<AxiosResponse<HistoryListingResponse>> {
-    return this.axiosInstance.get(`/api/${this.version}/history/search?query=` + query);
+    return this.axiosInstance.get(
+      `/api/${this.version}/history/search?query=` + query
+    );
   }
 
   async getCurrentShot(): Promise<AxiosResponse<HistoryEntry | null>> {
@@ -317,6 +339,8 @@ export default class Api {
   }
 
   async getOSStatus(): Promise<AxiosResponse<HistoryStats>> {
-    return this.axiosInstance.get(`/api/${this.version}/machine/OS_update_status`);
+    return this.axiosInstance.get(
+      `/api/${this.version}/machine/OS_update_status`
+    );
   }
 }
