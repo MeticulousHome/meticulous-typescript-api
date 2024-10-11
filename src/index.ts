@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { Socket, io } from 'socket.io-client';
 
 import {
+  OSStatusResponse,
   APIError,
   AcknowledgeNotificationRequest,
   ActionResponse,
@@ -338,7 +339,7 @@ export default class Api {
     return this.axiosInstance.get(`/api/${this.version}/history/stats`);
   }
 
-  async getOSStatus(): Promise<AxiosResponse<HistoryStats>> {
+  async getOSStatus(): Promise<AxiosResponse<OSStatusResponse>> {
     return this.axiosInstance.get(
       `/api/${this.version}/machine/OS_update_status`
     );
