@@ -42,11 +42,11 @@ export interface LastProfileIdent {
 }
 
 export type SettingsKey =
-  | 'auto_preheat'
   | 'auto_purge_after_shot'
   | 'auto_start_shot'
   | 'disallow_firmware_flashing'
   | 'enable_sounds'
+  | 'heating_timeout'
   | 'save_debug_shot_data'
   | 'update_channel';
 
