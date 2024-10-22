@@ -8,6 +8,7 @@ import {
   ActionResponse,
   ActionType,
   Actuators,
+  BrightnessRequest,
   Communication,
   DeviceInfo,
   HistoryEntry,
@@ -299,6 +300,12 @@ export default class Api {
 
   async getDeviceInfo(): Promise<AxiosResponse<DeviceInfo | APIError>> {
     return this.axiosInstance.get(`/api/${this.version}/machine`);
+  }
+
+  async setBrightness(
+    brightness: BrightnessRequest
+  ): Promise<AxiosResponse<APIError | null>> {
+    return this.axiosInstance.post('/api/v1/machine/brightness', brightness);
   }
 
   async getDefaultProfiles(): Promise<AxiosResponse<Profile[] | APIError>> {

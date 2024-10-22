@@ -307,3 +307,7 @@ export interface OSStatusResponse {
   status?: string;
   info?: string;
 }
+
+export interface BrightnessRequest {
+  brightness: 0 | 1;
+}
