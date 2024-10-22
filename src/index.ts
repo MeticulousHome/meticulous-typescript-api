@@ -305,7 +305,7 @@ export default class Api {
   async setBrightness(
     brightness: BrightnessRequest
   ): Promise<AxiosResponse<APIError | null>> {
-    return this.axiosInstance.post('/api/v1/machine/brightness', brightness);
+    return this.axiosInstance.post('/api/v1/machine/backlight', brightness);
   }
 
   async getDefaultProfiles(): Promise<AxiosResponse<Profile[] | APIError>> {
