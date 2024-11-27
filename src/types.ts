@@ -311,3 +311,14 @@ export interface OSStatusResponse {
 export interface BrightnessRequest {
   brightness: 0 | 1;
 }
+
+export interface Timezones {
+  [country: string]: {
+    [city: string]: string;
+  };
+}
+export interface CurrentTimezone {
+  country: string;
+  city: string;
+  timezone: string;
+}
