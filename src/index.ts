@@ -27,9 +27,7 @@ import {
   WiFiConfig,
   WiFiCredentials,
   WiFiNetwork,
-  WifiStatus,
-  Timezones,
-  CurrentTimezone
+  WifiStatus
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -211,14 +209,14 @@ export default class Api {
     return this.axiosInstance.get(url);
   }
 
-  async getTimezones(): Promise<AxiosResponse<Timezones | APIError>> {
+  async getTimezones(): Promise<AxiosResponse<Settings | APIError>> {
     const url = `/api/${this.version}/settings/timezones`;
     return this.axiosInstance.get(url);
   }
 
   async setTimezone(
     timeZone: string
-  ): Promise<AxiosResponse<CurrentTimezone | APIError>> {
+  ): Promise<AxiosResponse<Settings | APIError>> {
     return this.axiosInstance.post(
       `/api/${this.version}/settings/timezones`,
       timeZone
