@@ -209,20 +209,6 @@ export default class Api {
     return this.axiosInstance.get(url);
   }
 
-  async getTimezones(): Promise<AxiosResponse<Settings | APIError>> {
-    const url = `/api/${this.version}/settings/timezones`;
-    return this.axiosInstance.get(url);
-  }
-
-  async setTimezone(
-    timeZone: string
-  ): Promise<AxiosResponse<Settings | APIError>> {
-    return this.axiosInstance.post(
-      `/api/${this.version}/settings/timezones`,
-      timeZone
-    );
-  }
-
   async updateSetting(
     setting: Partial<Settings>
   ): Promise<AxiosResponse<Settings | APIError>> {
