@@ -60,6 +60,8 @@ export type Settings = Record<SettingsKey, SettingsType> & {
   enable_sounds: boolean;
   save_debug_shot_data: boolean;
   heating_timeout: number;
+  timezone_sync: string;
+  time_zone: string;
 };
 
 export enum APMode {
@@ -311,3 +313,12 @@ export interface OSStatusResponse {
 export interface BrightnessRequest {
   brightness: 0 | 1;
 }
+
+export interface Timezone {
+  [city: string]: string;
+}
+export interface Regions {
+  countries?: string[];
+  cities?: Timezone[];
+}
+export type regionType = 'countries' | 'cities';
