@@ -27,7 +27,9 @@ import {
   WiFiConfig,
   WiFiCredentials,
   WiFiNetwork,
-  WifiStatus
+  WifiStatus,
+  Regions,
+  regionType
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -347,6 +349,16 @@ export default class Api {
   async getOSStatus(): Promise<AxiosResponse<OSStatusResponse>> {
     return this.axiosInstance.get(
       `/api/${this.version}/machine/OS_update_status`
+    );
+  }
+
+  async getTimezoneRegion(
+    region_type: regionType,
+    conditional: string
+  ): Promise<AxiosResponse<Regions | APIError>> {
+    return this.axiosInstance.get(
+      `/api/${this.version}/timezones/${region_type}`,
+      { params: { filter: conditional } }
     );
   }
 }
