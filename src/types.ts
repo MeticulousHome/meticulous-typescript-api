@@ -284,7 +284,7 @@ export interface HistoryListingResponse {
 
 export interface HistoryQueryParams {
   query: string;
-  ids: number[];
+  ids: (number | string)[];
   start_date: string;
   end_date: string;
   order_by: ('profile' | 'date')[];
