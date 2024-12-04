@@ -207,14 +207,14 @@ export default class Api {
     settingName?: string
   ): Promise<AxiosResponse<Settings | APIError>> {
     const url =
-      `/api/${this.version}/settings` + (settingName ? `/${settingName}` : '');
+      `/api/${this.version}/settings/` + (settingName ? `${settingName}` : '');
     return this.axiosInstance.get(url);
   }
 
   async updateSetting(
     setting: Partial<Settings>
   ): Promise<AxiosResponse<Settings | APIError>> {
-    return this.axiosInstance.post(`/api/${this.version}/settings`, setting);
+    return this.axiosInstance.post(`/api/${this.version}/settings/`, setting);
   }
 
   async updateFirmware(
