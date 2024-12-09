@@ -59,6 +59,7 @@ export type Settings = Record<SettingsKey, SettingsType> & {
   disallow_firmware_flashing: boolean;
   enable_sounds: boolean;
   save_debug_shot_data: boolean;
+  idle_screen: string;
   heating_timeout: number;
   timezone_sync: string;
   time_zone: string;
