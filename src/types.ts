@@ -222,6 +222,7 @@ export interface DeviceInfo {
   color: string;
   model_version: string;
   serial: string;
+  software_version: string | null;
 }
 
 export interface HistoryProfile extends Profile {
