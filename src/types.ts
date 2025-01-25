@@ -41,18 +41,10 @@ export interface LastProfileIdent {
   profile: Profile;
 }
 
-export type SettingsKey =
-  | 'auto_purge_after_shot'
-  | 'auto_start_shot'
-  | 'disallow_firmware_flashing'
-  | 'enable_sounds'
-  | 'heating_timeout'
-  | 'save_debug_shot_data'
-  | 'update_channel';
-
+export type USB_MODE = 'client' | 'HOST' | 'dual_role';
 export type SettingsType = boolean | number | string;
 
-export type Settings = Record<SettingsKey, SettingsType> & {
+export type Settings = {
   auto_preheat: number;
   auto_purge_after_shot: boolean;
   auto_start_shot: boolean;
@@ -63,6 +55,8 @@ export type Settings = Record<SettingsKey, SettingsType> & {
   heating_timeout: number;
   timezone_sync: string;
   time_zone: string;
+  usb_mode: USB_MODE;
+  update_channel: string;
 };
 
 export enum APMode {
