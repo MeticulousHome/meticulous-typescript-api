@@ -59,6 +59,8 @@ export type Settings = {
   update_channel: string;
 };
 
+export type SettingsKey = keyof Settings;
+
 export enum APMode {
   AP = 'AP',
   CLIENT = 'CLIENT'
