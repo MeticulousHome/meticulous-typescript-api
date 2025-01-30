@@ -41,7 +41,7 @@ export interface LastProfileIdent {
   profile: Profile;
 }
 
-export type USB_MODE = 'client' | 'HOST' | 'dual_role';
+export type USB_MODE = 'client' | 'host' | 'dual_role';
 export type SettingsType = boolean | number | string;
 
 export type Settings = {
