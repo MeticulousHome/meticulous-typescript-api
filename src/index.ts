@@ -361,4 +361,10 @@ export default class Api {
       { params: { filter: conditional } }
     );
   }
+
+  async setTime(dateTime: Date): Promise<AxiosResponse<Regions | APIError>> {
+    return this.axiosInstance.post(`/api/${this.version}/machine/time`, {
+      date: dateTime.toISOString()
+    });
+  }
 }
