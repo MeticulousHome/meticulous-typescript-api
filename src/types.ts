@@ -5,6 +5,7 @@ export type ActionType =
   | 'stop'
   | 'reset'
   | 'tare'
+  | 'preheat'
   | 'calibration'
   | 'scale_master_calibration';
 
