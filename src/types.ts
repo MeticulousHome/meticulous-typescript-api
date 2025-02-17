@@ -145,6 +145,15 @@ export interface SensorData {
 
 export type MachineState = 'idle' | 'purge' | 'home' | 'brewing' | 'error';
 
+export interface SetpointData {
+  active?: string;
+  temperature?: number;
+  flow?: number;
+  pressure?: number;
+  power?: number;
+  piston?: number;
+}
+
 export interface StatusData {
   name: string;
   sensors: SensorData;
@@ -154,6 +163,7 @@ export interface StatusData {
   id: string; // id of the loaded profile
   state: MachineState;
   extracting: boolean;
+  setpoints: SetpointData;
 }
 
 export interface Temperatures {
