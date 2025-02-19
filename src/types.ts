@@ -194,22 +194,6 @@ export interface Actuators {
   bh_pwr: number;
 }
 
-export interface SoftwareInfo {
-  name: string;
-  lcdV: number;
-}
-
-export interface ESPInfo {
-  firmwareV: string;
-  espPinout: number;
-  mainVoltage: number;
-}
-
-export interface MachineInfoEvent {
-  software_info: SoftwareInfo;
-  esp_info: ESPInfo;
-}
-
 export type ProfileEvent =
   | 'create'
   | 'update'
