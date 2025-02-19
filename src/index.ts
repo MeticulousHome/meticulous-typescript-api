@@ -17,7 +17,6 @@ import {
   HistoryResponse,
   HistoryStats,
   LastProfileIdent,
-  MachineInfoEvent,
   Notification,
   ProfileIdent,
   ProfileUpdate,
@@ -41,7 +40,6 @@ export interface MachineDataClientOptions {
   onTemperatures?: (data: Temperatures) => void;
   onCommunication?: (data: Communication) => void;
   onActuators?: (data: Actuators) => void;
-  onMachineInfo?: (data: MachineInfoEvent) => void;
   onProfileUpdate?: (data: ProfileUpdate) => void;
   onNotification?: (data: Notification) => void;
 }
@@ -99,9 +97,6 @@ export default class Api {
     }
     if (this.options && this.options.onActuators) {
       this.socket.on('actuators', this.options && this.options.onActuators);
-    }
-    if (this.options && this.options.onMachineInfo) {
-      this.socket.on('info', this.options && this.options.onMachineInfo);
     }
   }
 
