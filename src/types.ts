@@ -141,6 +141,7 @@ export interface SensorData {
   f: number;
   w: number;
   t: number;
+  g: number;
 }
 
 export type MachineState = 'idle' | 'purge' | 'home' | 'brewing' | 'error';
