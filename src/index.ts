@@ -216,7 +216,7 @@ export default class Api {
   async getManufacturingMenuItems(): Promise<
     AxiosResponse<ManufacturingMenuItems | APIError>
   > {
-    const url = `/api/${this.version}/settings/manufacturing`;
+    const url = `/api/${this.version}/manufacturing`;
     return this.axiosInstance.get(url);
   }
 
@@ -224,7 +224,7 @@ export default class Api {
     setting: Partial<ManufacturingSettings>
   ): Promise<AxiosResponse<ManufacturingSettings | APIError>> {
     return this.axiosInstance.post(
-      `/api/${this.version}/settings/manufacturing`,
+      `/api/${this.version}/manufacturing`,
       setting
     );
   }
