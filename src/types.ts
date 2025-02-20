@@ -45,6 +45,25 @@ export interface LastProfileIdent {
 export type USB_MODE = 'client' | 'host' | 'dual_role';
 export type SettingsType = boolean | number | string;
 
+export type Option = {
+  name: string;
+  type: string;
+  value: boolean;
+};
+export type Element = {
+  key: string;
+  label: string;
+  options: Option[];
+};
+export type ManufacturingSettings = {
+  Elements: Element[];
+};
+
+export type ManufacturingPayload = {
+  persist: boolean;
+  skip_stage: boolean;
+};
+
 export type Settings = {
   auto_preheat: number;
   auto_purge_after_shot: boolean;

@@ -28,7 +28,8 @@ import {
   WiFiNetwork,
   WifiStatus,
   Regions,
-  regionType
+  regionType,
+  ManufacturingSettings
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -210,6 +211,21 @@ export default class Api {
     setting: Partial<Settings>
   ): Promise<AxiosResponse<Settings | APIError>> {
     return this.axiosInstance.post(`/api/${this.version}/settings/`, setting);
+  }
+  async getManufacturingSettings(): Promise<
+    AxiosResponse<ManufacturingSettings | APIError>
+  > {
+    const url = `/api/${this.version}/settings/manufacturing`;
+    return this.axiosInstance.get(url);
+  }
+
+  async updateManufacturingSettings(
+    setting: Partial<ManufacturingSettings>
+  ): Promise<AxiosResponse<ManufacturingSettings | APIError>> {
+    return this.axiosInstance.post(
+      `/api/${this.version}/settings/manufacturing`,
+      setting
+    );
   }
 
   async updateFirmware(
