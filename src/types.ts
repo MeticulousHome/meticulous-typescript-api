@@ -55,12 +55,13 @@ export type Element = {
   label: string;
   options: Option[];
 };
-export type ManufacturingSettings = {
+export type ManufacturingMenuItems = {
   Elements: Element[];
 };
 
-export type ManufacturingPayload = {
-  persist: boolean;
+export type ManufacturingSettings = {
+  enabled: boolean;
+  first_normal_boot: boolean;
   skip_stage: boolean;
 };
 

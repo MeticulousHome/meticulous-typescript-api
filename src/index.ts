@@ -29,6 +29,7 @@ import {
   WifiStatus,
   Regions,
   regionType,
+  ManufacturingMenuItems,
   ManufacturingSettings
 } from './types';
 
@@ -212,8 +213,8 @@ export default class Api {
   ): Promise<AxiosResponse<Settings | APIError>> {
     return this.axiosInstance.post(`/api/${this.version}/settings/`, setting);
   }
-  async getManufacturingSettings(): Promise<
-    AxiosResponse<ManufacturingSettings | APIError>
+  async getManufacturingMenuItems(): Promise<
+    AxiosResponse<ManufacturingMenuItems | APIError>
   > {
     const url = `/api/${this.version}/settings/manufacturing`;
     return this.axiosInstance.get(url);
