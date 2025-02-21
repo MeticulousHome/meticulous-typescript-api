@@ -42,6 +42,12 @@ export interface LastProfileIdent {
   profile: Profile;
 }
 
+export type ReverseScrolling = {
+  home: boolean;
+  keyboard: boolean;
+  menus: boolean;
+};
+
 export type USB_MODE = 'client' | 'host' | 'dual_role';
 export type SettingsType = boolean | number | string;
 
@@ -73,6 +79,7 @@ export type Settings = {
   enable_sounds: boolean;
   save_debug_shot_data: boolean;
   idle_screen: string;
+  reverse_scrolling: ReverseScrolling;
   heating_timeout: number;
   timezone_sync: string;
   time_zone: string;
