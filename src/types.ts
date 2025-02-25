@@ -85,6 +85,7 @@ export type Settings = {
   time_zone: string;
   usb_mode: USB_MODE;
   update_channel: string;
+  ssh_enabled: boolean;
 };
 
 export type SettingsKey = keyof Settings;
