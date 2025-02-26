@@ -379,4 +379,28 @@ export default class Api {
       date: dateTime.toISOString()
     });
   }
+
+  async rateShot(
+    shotId: number,
+    rating: 'like' | 'dislike' | null
+  ): Promise<
+    AxiosResponse<
+      { status: string; shot_id: number; rating: string | null } | APIError
+    >
+  > {
+    return this.axiosInstance.post(
+      `/api/${this.version}/history/rating/${shotId}`,
+      { rating }
+    );
+  }
+
+  async getShotRating(
+    shotId: number
+  ): Promise<
+    AxiosResponse<{ shot_id: number; rating: string | null } | APIError>
+  > {
+    return this.axiosInstance.get(
+      `/api/${this.version}/history/rating/${shotId}`
+    );
+  }
 }
