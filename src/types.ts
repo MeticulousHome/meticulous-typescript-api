@@ -288,6 +288,7 @@ export interface HistoryBaseEntry {
   file: string | null;
   name: string;
   profile: HistoryProfile;
+  rating?: ShotRating;
 }
 
 export interface HistoryEntry extends HistoryBaseEntry {
@@ -344,3 +345,7 @@ export interface Regions {
   cities?: Timezone[];
 }
 export type regionType = 'countries' | 'cities';
+
+export type ShotRating = {
+  basic: 'like' | 'dislike' | null;
+};
