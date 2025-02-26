@@ -30,7 +30,10 @@ import {
   Regions,
   regionType,
   ManufacturingMenuItems,
-  ManufacturingSettings
+  ManufacturingSettings,
+  ShotRating,
+  ShotRatingResponse,
+  RateShotResponse
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -384,5 +387,23 @@ export default class Api {
     return this.axiosInstance.post(`/api/${this.version}/machine/time`, {
       date: dateTime.toISOString()
     });
+  }
+
+  async rateShot(
+    shotId: number,
+    rating: ShotRating
+  ): Promise<AxiosResponse<RateShotResponse | APIError>> {
+    return this.axiosInstance.post(
+      `/api/${this.version}/history/rating/${shotId}`,
+      { rating }
+    );
+  }
+
+  async getShotRating(
+    shotId: number
+  ): Promise<AxiosResponse<ShotRatingResponse | APIError>> {
+    return this.axiosInstance.get(
+      `/api/${this.version}/history/rating/${shotId}`
+    );
   }
 }

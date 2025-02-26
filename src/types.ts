@@ -289,6 +289,7 @@ export interface HistoryBaseEntry {
   file: string | null;
   name: string;
   profile: HistoryProfile;
+  rating?: ShotRating;
 }
 
 export interface HistoryEntry extends HistoryBaseEntry {
@@ -345,3 +346,16 @@ export interface Regions {
   cities?: Timezone[];
 }
 export type regionType = 'countries' | 'cities';
+
+export type ShotRating = 'like' | 'dislike' | null;
+
+export type ShotRatingResponse = {
+  shot_id: number;
+  rating: ShotRating;
+};
+
+export type RateShotResponse = {
+  status: string;
+  shot_id: number;
+  rating: ShotRating;
+};
