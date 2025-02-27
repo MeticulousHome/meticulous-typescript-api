@@ -374,6 +374,12 @@ export default class Api {
     );
   }
 
+  async getRootPassword(): Promise<
+    AxiosResponse<{ status: string; root_password: string } | APIError>
+  > {
+    return this.axiosInstance.get(`/api/${this.version}/machine/root-password`);
+  }
+
   async setTime(dateTime: Date): Promise<AxiosResponse<Regions | APIError>> {
     return this.axiosInstance.post(`/api/${this.version}/machine/time`, {
       date: dateTime.toISOString()
