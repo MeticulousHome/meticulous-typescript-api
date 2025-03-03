@@ -76,6 +76,7 @@ export type Settings = {
   auto_purge_after_shot: boolean;
   auto_start_shot: boolean;
   disallow_firmware_flashing: boolean;
+  disable_ui_features: boolean;
   enable_sounds: boolean;
   save_debug_shot_data: boolean;
   idle_screen: string;
