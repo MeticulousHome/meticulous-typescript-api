@@ -1,5 +1,10 @@
 import { Profile } from '@meticulous-home/espresso-profile';
 
+export type DefaultProfiles = {
+  default: Profile[];
+  community: Profile[];
+};
+
 export type ActionType =
   | 'start'
   | 'stop'

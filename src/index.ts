@@ -33,7 +33,8 @@ import {
   ManufacturingSettings,
   ShotRating,
   ShotRatingResponse,
-  RateShotResponse
+  RateShotResponse,
+  DefaultProfiles
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -325,7 +326,9 @@ export default class Api {
     return this.axiosInstance.post('/api/v1/machine/backlight', brightness);
   }
 
-  async getDefaultProfiles(): Promise<AxiosResponse<Profile[] | APIError>> {
+  async getDefaultProfiles(): Promise<
+    AxiosResponse<Profile[] | DefaultProfiles | APIError>
+  > {
     return this.axiosInstance.get(`/api/${this.version}/profile/defaults`);
   }
 
