@@ -77,6 +77,7 @@ export type ManufacturingSettings = {
 };
 
 export type Settings = {
+  allow_debug_sending: boolean | null;
   auto_preheat: number;
   auto_purge_after_shot: boolean;
   auto_start_shot: boolean;
