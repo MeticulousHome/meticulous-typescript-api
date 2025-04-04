@@ -237,7 +237,7 @@ export type ProfileEvent =
   | 'load';
 
 export interface ProfileUpdate {
-  type: ProfileEvent;
+  change: ProfileEvent;
   profile_id?: string;
   change_id?: string;
 }
