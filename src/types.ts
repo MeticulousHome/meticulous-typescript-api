@@ -262,6 +262,7 @@ export interface HistoryDataPoint {
     flow: number;
     weight: number;
     temperature: number;
+    gravimetric_flow: number;
   };
   time: number;
   status: string;
