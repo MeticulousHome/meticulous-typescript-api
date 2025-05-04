@@ -8,6 +8,7 @@ export type DefaultProfiles = {
 export type ActionType =
   | 'start'
   | 'stop'
+  | 'continue'
   | 'reset'
   | 'tare'
   | 'preheat'
