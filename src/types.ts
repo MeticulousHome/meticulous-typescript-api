@@ -247,10 +247,17 @@ export interface DeviceInfo {
   name: string;
   hostname: string;
   firmware: string;
+  mainVoltage: number;
   color: string;
   model_version: string;
   serial: string;
+  batch_number: string;
+  build_date: string;
   software_version: string | null;
+  image_build_channel: string;
+  manufacturing: boolean
+  upgrade_first_boot: boolean;
+  version_history: string[];
 }
 
 export interface HistoryProfile extends Profile {
