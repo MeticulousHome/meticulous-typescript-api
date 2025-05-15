@@ -255,7 +255,7 @@ export interface DeviceInfo {
   build_date: string;
   software_version: string | null;
   image_build_channel: string;
-  manufacturing: boolean
+  manufacturing: boolean;
   upgrade_first_boot: boolean;
   version_history: string[];
 }
