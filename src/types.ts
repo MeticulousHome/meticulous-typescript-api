@@ -85,7 +85,7 @@ export type Settings = {
   disallow_firmware_flashing: boolean;
   disable_ui_features: boolean;
   enable_sounds: boolean;
-  save_debug_shot_data: boolean;
+  debug_shot_data_retention_days: number;
   idle_screen: string;
   reverse_scrolling: ReverseScrolling;
   heating_timeout: number;
