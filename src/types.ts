@@ -350,7 +350,7 @@ export interface OSStatusResponse {
 }
 
 export interface BrightnessRequest {
-  brightness: 0 | 1;
+  brightness: number;
 }
 
 export interface Timezone {
