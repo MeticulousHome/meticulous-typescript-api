@@ -305,7 +305,7 @@ export interface HistoryBaseEntry {
   name: string;
   profile: HistoryProfile;
   rating?: ShotRating;
-  debug_file: string | null;
+  debug_file?: string | null;
 }
 
 export interface HistoryEntry extends HistoryBaseEntry {
