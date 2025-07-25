@@ -350,8 +350,12 @@ export interface OSStatusResponse {
   info?: string;
 }
 
+export type BrightnessInterpolation = 'curve' | 'linear';
+
 export interface BrightnessRequest {
   brightness: number;
+  interpolation?: BrightnessInterpolation;
+  animation_time?: number;
 }
 
 export interface Timezone {
