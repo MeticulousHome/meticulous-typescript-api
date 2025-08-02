@@ -82,6 +82,7 @@ export type Settings = {
   auto_preheat: number;
   auto_purge_after_shot: boolean;
   auto_start_shot: boolean;
+  partial_retraction: number;
   disallow_firmware_flashing: boolean;
   disable_ui_features: boolean;
   enable_sounds: boolean;
