@@ -196,6 +196,7 @@ export interface StatusData {
   name: string;
   sensors: SensorData;
   time: number; // in ms
+  profile_time: number; // in ms
   profile: string;
   loaded_profile: string; // name of the profile
   id: string; // id of the loaded profile
