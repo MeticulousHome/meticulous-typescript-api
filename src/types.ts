@@ -95,6 +95,7 @@ export type Settings = {
   usb_mode: USB_MODE;
   update_channel: string;
   ssh_enabled: boolean;
+  allow_stage_skipping: boolean;
 };
 
 export type SettingsKey = keyof Settings;
