@@ -1,6 +1,6 @@
 {
   "name": "@meticulous-home/espresso-api",
-  "version": "0.10.7",
+  "version": "0.10.8",
   "description": "Typescript based package to interact with the meticulous API",
   "author": "Mimoja <mimoja@meticuloushome.com>",
   "license": "GPLv3",
