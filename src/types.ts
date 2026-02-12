@@ -54,7 +54,6 @@ export type ReverseScrolling = {
   menus: boolean;
 };
 
-export type USB_MODE = 'client' | 'host' | 'dual_role';
 export type SettingsType = boolean | number | string;
 
 export type Option = {
@@ -92,7 +91,6 @@ export type Settings = {
   heating_timeout: number;
   timezone_sync: string;
   time_zone: string;
-  usb_mode: USB_MODE;
   update_channel: string;
   ssh_enabled: boolean;
 };
