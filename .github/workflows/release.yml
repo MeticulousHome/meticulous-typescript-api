@@ -26,7 +26,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           scope: '@meticulous-home'
           #token: ${{ secrets.NPM_TOKEN }}
-        run: npm i -g npm@^11.5.1 && node -v && npm -v 
+      - run: npm i -g npm@^11.5.1 && node -v && npm -v
 
       - name: Install dependencies
         run: npm ci
