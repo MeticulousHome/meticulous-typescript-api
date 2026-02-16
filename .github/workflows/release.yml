@@ -1,8 +1,7 @@
 name: Deployment
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -42,12 +41,8 @@ jobs:
           git commit -m "Build and deploy"
           git push -f origin dist
 
-      - name: Publish to NPM
-        id: publish
-        uses: JS-DevTools/npm-publish@v4
-        with:
-          access: public
-          ignore-scripts: true
+      - name: Publish to NPM dry run
+        run: npm publish --ignore-scripts --json --access public --dry-run
 
       # - name: "Create GitHub release: ${{ steps.publish.outputs.version }}"
       #   uses: softprops/action-gh-release@v2
