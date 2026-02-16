@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
 
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
 jobs:
   deployment:
     name: Release new version
@@ -39,7 +44,7 @@ jobs:
 
       - name: Publish to NPM
         id: publish
-        uses: JS-DevTools/npm-publish@v3
+        uses: JS-DevTools/npm-publish@v4
         with:
           token: ${{ secrets.NPM_TOKEN }}
           access: public
