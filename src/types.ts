@@ -15,6 +15,8 @@ export type ActionType =
   | 'calibration'
   | 'scale_master_calibration';
 
+export type TestType = 'speaker';
+
 export interface ActionResponse {
   action?: string;
   allowed_actions?: string[];
