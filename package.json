@@ -1,6 +1,6 @@
 {
   "name": "@meticulous-home/espresso-api",
-  "version": "0.10.10",
+  "version": "0.10.11",
   "description": "Typescript based package to interact with the meticulous API",
   "repository": {
     "url": "https://github.com/MeticulousHome/meticulous-typescript-api"

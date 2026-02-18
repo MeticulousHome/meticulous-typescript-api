@@ -95,6 +95,7 @@ export type Settings = {
   time_zone: string;
   update_channel: string;
   ssh_enabled: boolean;
+  telemetry_service_enabled: boolean;
 };
 
 export type SettingsKey = keyof Settings;
