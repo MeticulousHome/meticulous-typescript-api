@@ -17,9 +17,12 @@ export type ActionType =
 
 export type TestType = 'speaker';
 
+export type NotificationResponse = string;
+
 export interface ActionResponse {
   action?: string;
   allowed_actions?: string[];
+  status?: string;
 }
 
 export interface FileListing {
@@ -27,11 +30,11 @@ export interface FileListing {
   url: string;
 }
 
-export interface Notification {
+export interface NotificationItem {
   id: string;
   message: string;
   image?: string;
-  response_options?: string[];
+  responses?: NotificationResponse[];
   timestamp: string;
 }
 
@@ -43,6 +46,11 @@ export interface AcknowledgeNotificationRequest {
 export interface ProfileIdent {
   change_id: string;
   profile: Profile;
+}
+
+export interface ProfileShortIdent {
+  name: string;
+  id: string;
 }
 
 export interface LastProfileIdent {
@@ -74,11 +82,14 @@ export type ManufacturingMenuItems = {
 
 export type ManufacturingSettings = {
   enabled: boolean;
-  first_normal_boot: boolean;
+  last_boot_mode: string;
   skip_stage: boolean;
 };
 
 export type Settings = {
+  heat_on_boot: boolean;
+  hostname_override: string;
+  profile_order: string[];
   allow_debug_sending: boolean | null;
   auto_preheat: number;
   auto_purge_after_shot: boolean;
@@ -246,13 +257,17 @@ export interface ProfileUpdate {
   change_id?: string;
 }
 
+export interface RepoInfo {
+  branch: string;
+  commit: string;
+}
+
 export interface DeviceInfo {
   name: string;
   hostname: string;
   firmware: string;
   mainVoltage: number;
   color: string;
-  model_version: string;
   serial: string;
   batch_number: string;
   build_date: string;
@@ -262,6 +277,9 @@ export interface DeviceInfo {
   manufacturing: boolean;
   upgrade_first_boot: boolean;
   version_history: string[];
+  repository_info: {
+    [repo: string]: RepoInfo;
+  };
 }
 
 export interface HistoryProfile extends Profile {
