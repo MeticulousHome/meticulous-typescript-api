@@ -17,8 +17,9 @@ import {
   HistoryResponse,
   HistoryStats,
   LastProfileIdent,
-  Notification,
+  NotificationItem,
   ProfileIdent,
+  ProfileShortIdent,
   ProfileUpdate,
   Settings,
   StatusData,
@@ -48,7 +49,7 @@ export interface MachineDataClientOptions {
   onCommunication?: (data: Communication) => void;
   onActuators?: (data: Actuators) => void;
   onProfileUpdate?: (data: ProfileUpdate) => void;
-  onNotification?: (data: Notification) => void;
+  onNotification?: (data: NotificationItem) => void;
 }
 
 export default class Api {
@@ -113,7 +114,9 @@ export default class Api {
     return this.axiosInstance.get(`/api/${this.version}/action/${action}`);
   }
 
-  async listProfiles(): Promise<AxiosResponse<ProfileIdent[] | APIError>> {
+  async listProfiles(): Promise<
+    AxiosResponse<Omit<Profile, 'stages'>[] | APIError>
+  > {
     return this.axiosInstance.get(`/api/${this.version}/profile/list`);
   }
 
@@ -131,13 +134,13 @@ export default class Api {
 
   async loadProfileFromJSON(
     data: Profile
-  ): Promise<AxiosResponse<ProfileIdent | APIError>> {
+  ): Promise<AxiosResponse<ProfileShortIdent | APIError>> {
     return this.axiosInstance.post(`/api/${this.version}/profile/load`, data);
   }
 
   async loadProfileByID(
     id: string
-  ): Promise<AxiosResponse<ProfileIdent | APIError>> {
+  ): Promise<AxiosResponse<ProfileShortIdent | APIError>> {
     return this.axiosInstance.get(
       `/api/${this.version}/profile/load/${id.toString()}`
     );
@@ -190,7 +193,7 @@ export default class Api {
 
   async getNotifications(
     acknowledged: boolean
-  ): Promise<AxiosResponse<Notification[] | APIError>> {
+  ): Promise<AxiosResponse<NotificationItem[] | APIError>> {
     return this.axiosInstance.get(
       `/api/${this.version}/notifications?acknowledged=${acknowledged}`
     );
