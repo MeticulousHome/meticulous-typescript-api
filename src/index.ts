@@ -34,6 +34,7 @@ import {
   ShotRating,
   ShotRatingResponse,
   RateShotResponse,
+  TestType,
   DefaultProfiles
 } from './types';
 
@@ -255,6 +256,10 @@ export default class Api {
     data: Partial<WiFiConfig>
   ): Promise<AxiosResponse<WiFiConfig | APIError>> {
     return this.axiosInstance.post(`/api/${this.version}/wifi/config`, data);
+  }
+
+  async requestTest(test: TestType): Promise<AxiosResponse<void | APIError>> {
+    return this.axiosInstance.get(`/api/${this.version}/test/${test}`);
   }
 
   async getWiFiQR(): Promise<AxiosResponse<Blob>> {

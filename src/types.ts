@@ -15,6 +15,8 @@ export type ActionType =
   | 'calibration'
   | 'scale_master_calibration';
 
+export type TestType = 'speaker';
+
 export interface ActionResponse {
   action?: string;
   allowed_actions?: string[];
@@ -54,7 +56,6 @@ export type ReverseScrolling = {
   menus: boolean;
 };
 
-export type USB_MODE = 'client' | 'host' | 'dual_role';
 export type SettingsType = boolean | number | string;
 
 export type Option = {
@@ -92,10 +93,10 @@ export type Settings = {
   heating_timeout: number;
   timezone_sync: string;
   time_zone: string;
-  usb_mode: USB_MODE;
   update_channel: string;
   ssh_enabled: boolean;
   clock_format_24_hour: boolean; 
+  telemetry_service_enabled: boolean;
 };
 
 export type SettingsKey = keyof Settings;
