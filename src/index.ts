@@ -36,7 +36,13 @@ import {
   ShotRatingResponse,
   RateShotResponse,
   TestType,
-  DefaultProfiles
+  DefaultProfiles,
+  DraftInfo,
+  MeticulousIDRequestType,
+  PaginatedResponse,
+  PageParams,
+  ReportInfo,
+  SubmitInfo
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -51,6 +57,73 @@ export interface MachineDataClientOptions {
   onProfileUpdate?: (data: ProfileUpdate) => void;
   onNotification?: (data: NotificationItem) => void;
 }
+
+export type ReportResult<T> = T | APIError;
+
+const REPORT_INFO_KEYS: (keyof ReportInfo)[] = [
+  'description',
+  'dateAndTime',
+  'attachments',
+  'multimedia',
+  'machineID',
+  'eventID',
+  'baseEventID',
+  'ticket',
+  'localID'
+];
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isAPIError(value: unknown): value is APIError {
+  return isObject(value) && typeof value.error === 'string';
+}
+
+function parseAPIError(
+  value: unknown,
+  description?: string,
+  data?: object
+): APIError {
+  if (isAPIError(value)) {
+    return value;
+  }
+
+  let error: APIError = {
+    error: 'Request failed',
+    description: description ? description : ''
+  };
+
+  if (typeof value === 'string' && value.length > 0) {
+    error['error'] = value;
+  } else {
+    error['data'] = { value: value };
+  }
+
+  if (data) {
+    error['data'] = error['data'] ? { ...error['data'], data: data } : data;
+  }
+
+  return error;
+}
+
+async function parseBinaryErrorBody(value: unknown): Promise<APIError> {
+  if (value instanceof ArrayBuffer) {
+    const body = new TextDecoder().decode(value);
+    try {
+      return parseAPIError(JSON.parse(body));
+    } catch {
+      return parseAPIError(body);
+    }
+  }
+
+  if (value instanceof Blob) {
+    return parseBinaryErrorBody(await value.arrayBuffer());
+  }
+
+  return parseAPIError(value);
+}
+
 
 export default class Api {
   private axiosInstance: AxiosInstance;
@@ -332,6 +405,149 @@ export default class Api {
     brightness: BrightnessRequest
   ): Promise<AxiosResponse<APIError | null>> {
     return this.axiosInstance.post('/api/v1/machine/backlight', brightness);
+  }
+
+  async createReport(): Promise<ReportResult<DraftInfo>> {
+    try {
+      const response = await this.axiosInstance.post<DraftInfo | APIError>(
+        `/api/${this.version}/reports/create`,
+        undefined,
+        {
+          headers: {
+            Accept: 'application/json'
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  async getReports(
+    pageParams: PageParams
+  ): Promise<ReportResult<PaginatedResponse<ReportInfo>>> {
+    try {
+      const response = await this.axiosInstance.get<
+        PaginatedResponse<ReportInfo> | APIError
+      >(`/api/${this.version}/reports/list`, {
+        headers: {
+          Accept: 'application/json'
+        },
+        params: pageParams
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  async getDraftReport(localID: string): Promise<ReportResult<Uint8Array>> {
+    try {
+      const response = await this.axiosInstance.get<ArrayBuffer | APIError>(
+        `/api/${this.version}/reports/draft/${localID}`,
+        {
+          headers: {
+            Accept: 'application/octet-stream'
+          },
+          responseType: 'arraybuffer'
+        }
+      );
+
+      return new Uint8Array(response.data as ArrayBuffer);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseBinaryErrorBody(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  async updateReport(
+    id: string,
+    patch: Partial<ReportInfo>
+  ): Promise<ReportResult<ReportInfo>> {
+    try {
+      const normalizedReport: Partial<ReportInfo> = {};
+      REPORT_INFO_KEYS.forEach((key) => {
+        if (key in patch) {
+          normalizedReport[key] = (patch[key] ?? null) as never;
+        }
+      });
+
+      const response = await this.axiosInstance.put<ReportInfo | APIError>(
+        `/api/${this.version}/reports/draft/${id}`,
+        normalizedReport,
+        {
+          headers: {
+            Accept: 'application/json'
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  async markSubmittedReport(
+    submitInfo: SubmitInfo
+  ): Promise<ReportResult<void>> {
+    try {
+      const response = await this.axiosInstance.post<void | APIError>(
+        `/api/${this.version}/reports/submit`,
+        submitInfo,
+        {
+          headers: {
+            Accept: 'application/json'
+          }
+        }
+      );
+      return isAPIError(response.data) ? response.data : undefined;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  async getMeticulousReportTracking(
+    serviceUrl: string,
+    payload: MeticulousIDRequestType
+  ): Promise<ReportResult<number>> {
+    try {
+      const response = await axios.post<{ ticket: number } | APIError>(
+        serviceUrl,
+        payload,
+        {
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (isAPIError(response.data)) {
+        return response.data;
+      }
+
+      return response.data.ticket;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
   }
 
   async getDefaultProfiles(): Promise<
