@@ -177,10 +177,66 @@ export interface WiFiNetwork {
   in_use: boolean;
 }
 
+// A semi-generic object  to avoid use of `any`
+export type GenericValue = string | number | boolean | null | GenericDict;
+export interface GenericDict {
+  [key: string]: GenericValue;
+}
+
 export interface APIError {
   error: string;
   description: string;
   data?: object;
+}
+
+export interface MeticulousIDRequestType {
+  eventID: string;
+  baseEventID?: string;
+}
+
+export interface MachineAttachments {
+  debugFiles: {
+    user?: string[];
+    automatic: string[];
+  };
+  machineLogs?: boolean;
+  machineInfo?: boolean;
+}
+
+export interface ReportInfo {
+  description?: string | null;
+  dateAndTime: number | null;
+  attachments?: MachineAttachments | null;
+  multimedia?: number | null;
+  machineID: string | null;
+  eventID?: string | null;
+  baseEventID?: string | null;
+  ticket?: number | null;
+  localID: string | null;
+}
+
+export interface DraftInfo {
+  localID: string;
+}
+
+export interface SubmitInfo {
+  localID: string;
+  eventID: string;
+  ticket?: number;
+  submissionTime?: number;
+}
+
+export interface PaginatedResponse<T> {
+  content: T[];
+  size: number;
+  page: number;
+  hasMore: boolean;
+}
+
+export interface PageParams {
+  size: number;
+  page: number;
+  filter?: string;
 }
 
 // Socket.io Message types
