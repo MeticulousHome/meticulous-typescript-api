@@ -124,7 +124,6 @@ async function parseBinaryErrorBody(value: unknown): Promise<APIError> {
   return parseAPIError(value);
 }
 
-
 export default class Api {
   private axiosInstance: AxiosInstance;
   private socket: Socket | undefined = undefined;
