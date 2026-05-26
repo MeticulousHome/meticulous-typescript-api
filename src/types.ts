@@ -201,6 +201,7 @@ export interface MachineAttachments {
   };
   machineLogs?: boolean;
   machineInfo?: boolean;
+  machineStatus?: boolean;
 }
 
 export interface ReportInfo {
@@ -217,6 +218,7 @@ export interface ReportInfo {
 
 export interface DraftInfo {
   localID: string;
+  machineID: string;
 }
 
 export interface SubmitInfo {
