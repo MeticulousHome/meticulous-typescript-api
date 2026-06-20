@@ -107,6 +107,7 @@ export type Settings = {
   update_channel: string;
   ssh_enabled: boolean;
   telemetry_service_enabled: boolean;
+  sound_volume: number;
 };
 
 export type SettingsKey = keyof Settings;
