@@ -37,6 +37,7 @@ import {
   RateShotResponse,
   TestType,
   DefaultProfiles,
+  CreateReportRequest,
   DraftInfo,
   MeticulousIDRequestType,
   PaginatedResponse,
@@ -63,6 +64,7 @@ export type ReportResult<T> = T | APIError;
 const REPORT_INFO_KEYS: (keyof ReportInfo)[] = [
   'description',
   'dateAndTime',
+  'issueTime',
   'attachments',
   'multimedia',
   'machineID',
@@ -406,17 +408,26 @@ export default class Api {
     return this.axiosInstance.post('/api/v1/machine/backlight', brightness);
   }
 
-  async createReport(): Promise<ReportResult<DraftInfo>> {
+  async createReport(
+    request?: CreateReportRequest
+  ): Promise<ReportResult<DraftInfo>> {
     try {
-      const response = await this.axiosInstance.post<DraftInfo | APIError>(
-        `/api/${this.version}/reports/create`,
-        undefined,
-        {
-          headers: {
-            Accept: 'application/json'
-          }
+      const config = {
+        headers: {
+          Accept: 'application/json'
         }
-      );
+      };
+      const response = request
+        ? await this.axiosInstance.post<DraftInfo | APIError>(
+            `/api/${this.version}/reports/create`,
+            request,
+            config
+          )
+        : await this.axiosInstance.post<DraftInfo | APIError>(
+            `/api/${this.version}/reports/create`,
+            undefined,
+            config
+          );
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
