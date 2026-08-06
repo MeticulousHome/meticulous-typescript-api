@@ -204,9 +204,14 @@ export interface MachineAttachments {
   machineStatus?: boolean;
 }
 
+export interface CreateReportRequest {
+  issueTime: number;
+}
+
 export interface ReportInfo {
   description?: string | null;
   dateAndTime: number | null;
+  issueTime: number;
   attachments?: MachineAttachments | null;
   multimedia?: number | null;
   machineID: string | null;
