@@ -479,6 +479,25 @@ export default class Api {
     }
   }
 
+  async deleteDraftReport(localID: string): Promise<ReportResult<void>> {
+    try {
+      const response = await this.axiosInstance.delete<void | APIError>(
+        `/api/${this.version}/reports/draft/${localID}`,
+        {
+          headers: {
+            Accept: 'application/json'
+          }
+        }
+      );
+      return isAPIError(response.data) ? response.data : undefined;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
   async updateReport(
     id: string,
     patch: Partial<ReportInfo>
