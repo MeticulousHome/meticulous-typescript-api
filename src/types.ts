@@ -64,6 +64,8 @@ export type ReverseScrolling = {
   menus: boolean;
 };
 
+export type TareBehavior = 'after_retraction' | 'before_retraction';
+
 export type SettingsType = boolean | number | string;
 
 export type Option = {
@@ -94,6 +96,7 @@ export type Settings = {
   auto_preheat: number;
   auto_purge_after_shot: boolean;
   auto_start_shot: boolean;
+  tare_behavior?: TareBehavior;
   partial_retraction: number;
   disallow_firmware_flashing: boolean;
   disable_ui_features: boolean;
@@ -329,6 +332,7 @@ export interface DeviceInfo {
   name: string;
   hostname: string;
   firmware: string;
+  tare_behavior_supported?: boolean;
   mainVoltage: number;
   color: string;
   serial: string;
