@@ -211,6 +211,10 @@ export interface CreateReportRequest {
   issueTime: number;
 }
 
+export interface CreateReportOptions {
+  signal?: AbortSignal;
+}
+
 export interface ReportInfo {
   description?: string | null;
   dateAndTime: number | null;
