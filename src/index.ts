@@ -38,6 +38,7 @@ import {
   TestType,
   DefaultProfiles,
   CreateReportRequest,
+  CreateReportOptions,
   DraftInfo,
   MeticulousIDRequestType,
   PaginatedResponse,
@@ -409,13 +410,15 @@ export default class Api {
   }
 
   async createReport(
-    request?: CreateReportRequest
+    request?: CreateReportRequest,
+    options?: CreateReportOptions
   ): Promise<ReportResult<DraftInfo>> {
     try {
       const config = {
         headers: {
           Accept: 'application/json'
-        }
+        },
+        signal: options?.signal
       };
       const response = request
         ? await this.axiosInstance.post<DraftInfo | APIError>(
