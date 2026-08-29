@@ -17,7 +17,8 @@
     "build": "tsc",
     "check-types": "tsc --noEmit",
     "format": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --write",
-    "format:check": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --check"
+    "format:check": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --check",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "prettier": "^3.2.5",
