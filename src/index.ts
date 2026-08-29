@@ -58,6 +58,33 @@ export interface MachineDataClientOptions {
   onActuators?: (data: Actuators) => void;
   onProfileUpdate?: (data: ProfileUpdate) => void;
   onNotification?: (data: NotificationItem) => void;
+  // Invoked when the machine answers 401 (this device is not paired, or its
+  // token was revoked). The app should start the re-pairing flow.
+  onUnauthorized?: () => void;
+}
+
+// --- Device pairing (per-device API access tokens) -------------------------
+
+export interface PairingRequest {
+  pairing_id: string;
+  expires_in: number;
+}
+
+export interface PairingStatus {
+  status: 'pending' | 'approved' | 'denied' | 'expired';
+  token?: string;
+}
+
+export interface PairingVerifyResult {
+  status: 'approved';
+  token: string;
+}
+
+export interface PairedDevice {
+  device_id: string;
+  device_name: string;
+  created_at: string | null;
+  last_seen_at: string | null;
 }
 
 export type ReportResult<T> = T | APIError;
@@ -133,13 +160,19 @@ export default class Api {
 
   private serverURL: string;
   private version: string = 'v1';
+  // Per-device API token obtained through pairing. Attached to every HTTP
+  // request and to the Socket.IO handshake. Undefined until the device is
+  // paired; the pairing endpoints themselves are reachable without it.
+  private token?: string;
 
   constructor(
     private options?: MachineDataClientOptions,
-    base_url?: string
+    base_url?: string,
+    token?: string
   ) {
     const serverURL = base_url || 'http://localhost:8080/';
     this.serverURL = serverURL;
+    this.token = token;
 
     // AXIOS
     this.axiosInstance = axios.create({
@@ -149,6 +182,42 @@ export default class Api {
         'Content-Type': 'application/json'
       }
     });
+
+    // Attach the bearer token (if any) to every request. Using an interceptor
+    // (rather than a fixed header) means setToken() takes effect immediately
+    // without recreating the instance.
+    this.axiosInstance.interceptors.request.use((config) => {
+      if (this.token) {
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${this.token}`;
+      }
+      return config;
+    });
+
+    // Surface a 401 so the app can guide re-pairing.
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error?.response?.status === 401 && this.options?.onUnauthorized) {
+          this.options.onUnauthorized();
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  // Update the token after a (re-)pairing. Reconnects the socket so the new
+  // token is used in the handshake.
+  setToken(token: string | undefined) {
+    this.token = token;
+    if (this.socket !== undefined) {
+      this.disconnectSocket();
+      this.connectToSocket();
+    }
+  }
+
+  getToken(): string | undefined {
+    return this.token;
   }
 
   disconnectSocket() {
@@ -163,8 +232,12 @@ export default class Api {
   }
 
   connectToSocket() {
-    // Socket.io
-    this.socket = io(this.serverURL);
+    // Socket.io. The token travels in the handshake `auth` payload; the machine
+    // refuses the connection for an unpaired LAN client. (The Dial itself talks
+    // over loopback and is exempt server-side.)
+    this.socket = io(this.serverURL, {
+      auth: this.token ? { token: this.token } : {}
+    });
 
     if (this.options && this.options.onStatus) {
       this.socket.on('status', this.options && this.options.onStatus);
@@ -181,6 +254,58 @@ export default class Api {
     if (this.options && this.options.onActuators) {
       this.socket.on('actuators', this.options && this.options.onActuators);
     }
+  }
+
+  // --- Device pairing ------------------------------------------------------
+
+  // Open a pairing session. The machine shows a 6-digit code on its Dial; this
+  // call returns only the pairing_id (the code is never sent to the client, so
+  // typing it back proves the user can see the machine).
+  async requestPairing(
+    deviceName: string
+  ): Promise<AxiosResponse<PairingRequest | APIError>> {
+    return this.axiosInstance.post(`/api/${this.version}/pair/request`, {
+      device_name: deviceName
+    });
+  }
+
+  // Approve by typing back the code shown on the Dial. On success the response
+  // carries the device token; call setToken() with it and persist it securely.
+  async verifyPairingCode(
+    pairingId: string,
+    code: string
+  ): Promise<AxiosResponse<PairingVerifyResult | APIError>> {
+    return this.axiosInstance.post(`/api/${this.version}/pair/verify`, {
+      pairing_id: pairingId,
+      code
+    });
+  }
+
+  // Poll a pairing session (used when approval happens with the Dial knob
+  // rather than by typing the code); returns the token once approved.
+  async getPairingStatus(
+    pairingId: string
+  ): Promise<AxiosResponse<PairingStatus | APIError>> {
+    return this.axiosInstance.get(
+      `/api/${this.version}/pair/status/${pairingId}`
+    );
+  }
+
+  // List the devices currently paired with the machine (needs a valid token).
+  async listPairedDevices(): Promise<
+    AxiosResponse<{ devices: PairedDevice[] } | APIError>
+  > {
+    return this.axiosInstance.get(`/api/${this.version}/pair/devices`);
+  }
+
+  // Revoke a paired device by id (needs a valid token).
+  async revokePairedDevice(
+    deviceId: string
+  ): Promise<AxiosResponse<{ status: string } | APIError>> {
+    return this.axiosInstance.post(
+      `/api/${this.version}/pair/devices/${deviceId}/revoke`,
+      {}
+    );
   }
 
   async executeAction(
