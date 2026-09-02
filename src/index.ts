@@ -791,3 +791,4 @@ export default class Api {
     );
   }
 }
+export * from './identity';

@@ -18,7 +18,8 @@
     "check-types": "tsc --noEmit",
     "format": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --write",
     "format:check": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --check",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test": "npm run build && node test/identity.test.cjs"
   },
   "devDependencies": {
     "prettier": "^3.2.5",
@@ -27,6 +28,8 @@
   },
   "dependencies": {
     "@meticulous-home/espresso-profile": "^0.4.2",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
     "axios": "^1.6.8",
     "socket.io-client": "^4.7.5"
   },
