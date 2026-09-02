@@ -49,7 +49,35 @@ import {
 
 import { Profile } from '@meticulous-home/espresso-profile';
 
+import {
+  PinnedCredential,
+  MachineIdentity,
+  VerifyResult,
+  canonicalOrigin,
+  buildIdentityMessage,
+  fingerprintOf,
+  verifyIdentitySignature,
+  randomNonce
+} from './identity';
+
 export * from './types';
+
+// Freshness window for an identity verification (panel decision D2: 60 s, kept
+// tight because a silent same-IP takeover fires none of the forced-clear
+// triggers). A sub-millisecond verify makes this essentially free.
+const IDENTITY_TTL_MS = 60_000;
+
+// Thrown by a machine request when the origin has not proven possession of the
+// pinned identity key. The credential is NOT sent.
+export class MachineIdentityError extends Error {
+  constructor(
+    public readonly result: VerifyResult,
+    public readonly origin: string
+  ) {
+    super(`machine identity ${result} for ${origin}`);
+    this.name = 'MachineIdentityError';
+  }
+}
 
 export interface MachineDataClientOptions {
   onStatus?: (data: StatusData) => void;
@@ -61,6 +89,10 @@ export interface MachineDataClientOptions {
   // Invoked when the machine answers 401 (this device is not paired, or its
   // token was revoked). The app should start the re-pairing flow.
   onUnauthorized?: () => void;
+  // Invoked when the origin's identity does not match the pinned credential
+  // (a different machine, or an impostor at a reused address). The credential
+  // stays stored; the app should show "identity changed" and offer re-pairing.
+  onIdentityChanged?: (origin: string, result: VerifyResult) => void;
 }
 
 // --- Device pairing (per-device API access tokens) -------------------------
@@ -164,6 +196,18 @@ export default class Api {
   // request and to the Socket.IO handshake. Undefined until the device is
   // paired; the pairing endpoints themselves are reachable without it.
   private token?: string;
+  // The pinned machine identity (phase 1). When set, the client rule is
+  // enforced: no credential is attached to an origin that has not just proven
+  // possession of `credential.publicKey`. A legacy token with no credential
+  // keeps the old behavior (for a backend that has no identity yet).
+  private credential?: PinnedCredential;
+  // Credential-less axios instance for the identity probes (GET /machine,
+  // POST /identity/challenge). It carries NO interceptor, so verification never
+  // recurses, and never follows a redirect (a 3xx is a failure, not a hop to
+  // another origin).
+  private probeAxios: AxiosInstance;
+  private verifiedAt = 0;
+  private verifiedFingerprint?: string;
 
   constructor(
     private options?: MachineDataClientOptions,
@@ -183,33 +227,61 @@ export default class Api {
       }
     });
 
-    // Attach the bearer token (if any) to every request. Using an interceptor
-    // (rather than a fixed header) means setToken() takes effect immediately
-    // without recreating the instance.
-    this.axiosInstance.interceptors.request.use((config) => {
-      if (this.token) {
+    this.probeAxios = axios.create({
+      baseURL: serverURL,
+      maxRedirects: 0,
+      headers: { Accept: 'application/json' }
+    });
+
+    // Before attaching the token, prove the origin holds the pinned identity
+    // key. This is the whole guarantee: a substitute server at a reused address
+    // cannot sign the challenge, so the token is never sent to it. The probe
+    // uses probeAxios (no interceptor), so this does not recurse.
+    this.axiosInstance.interceptors.request.use(async (config) => {
+      if (this.credential) {
+        const result = await this.ensureVerified();
+        if (result !== 'ok') {
+          if (result !== 'unreachable') {
+            this.credential.state = 'identity_changed';
+            this.options?.onIdentityChanged?.(this.origin(), result);
+          }
+          throw new MachineIdentityError(result, this.origin());
+        }
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${this.credential.token}`;
+      } else if (this.token) {
+        // Legacy path: no pinned identity (e.g. an older backend). Attach the
+        // bearer as before.
         config.headers = config.headers ?? {};
         config.headers.Authorization = `Bearer ${this.token}`;
       }
       return config;
     });
 
-    // Surface a 401 so the app can guide re-pairing.
+    // Surface a 401 so the app can guide re-pairing. Clear the verification
+    // cache so the next credentialed request re-verifies (ADV-016: only the
+    // credential that made the rejected request is affected).
     this.axiosInstance.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error?.response?.status === 401 && this.options?.onUnauthorized) {
-          this.options.onUnauthorized();
+        if (error?.response?.status === 401) {
+          this.verifiedAt = 0;
+          this.options?.onUnauthorized?.();
         }
         return Promise.reject(error);
       }
     );
   }
 
+  private origin(): string {
+    return canonicalOrigin(this.serverURL);
+  }
+
   // Update the token after a (re-)pairing. Reconnects the socket so the new
-  // token is used in the handshake.
+  // token is used in the handshake. Legacy: does not pin an identity.
   setToken(token: string | undefined) {
     this.token = token;
+    this.verifiedAt = 0;
     if (this.socket !== undefined) {
       this.disconnectSocket();
       this.connectToSocket();
@@ -217,7 +289,100 @@ export default class Api {
   }
 
   getToken(): string | undefined {
-    return this.token;
+    return this.credential?.token ?? this.token;
+  }
+
+  // Pin a machine credential (from completePairing / persisted storage). From
+  // now on the identity rule is enforced for this origin.
+  setCredential(credential: PinnedCredential | undefined) {
+    this.credential = credential;
+    this.verifiedAt = 0;
+    if (this.socket !== undefined) {
+      this.disconnectSocket();
+      this.connectToSocket();
+    }
+  }
+
+  getCredential(): PinnedCredential | undefined {
+    return this.credential;
+  }
+
+  // The client rule, run before any credential leaves the device. Verifies that
+  // the current origin has just signed a fresh nonce under the pinned key.
+  async ensureVerified(): Promise<VerifyResult> {
+    const cred = this.credential;
+    if (!cred) return 'ok';
+    const origin = this.origin();
+    const fresh =
+      Date.now() - this.verifiedAt < IDENTITY_TTL_MS &&
+      this.verifiedFingerprint === cred.fingerprint;
+    if (fresh) return 'ok';
+
+    let machine;
+    try {
+      const r = await this.probeAxios.get(`/api/${this.version}/machine`, {
+        validateStatus: (s) => s === 200
+      });
+      machine = r.data;
+    } catch (e) {
+      if (this.isRedirect(e)) return 'redirect';
+      return 'unreachable';
+    }
+    const identity: MachineIdentity | undefined = machine?.identity;
+    if (!identity || !identity.fingerprint) return 'no_identity';
+    if (
+      identity.fingerprint !== cred.fingerprint ||
+      (machine.serial ?? '') !== cred.serial
+    ) {
+      return 'mismatch';
+    }
+
+    const nonce = randomNonce();
+    let challenge;
+    try {
+      const r = await this.probeAxios.post(
+        `/api/${this.version}/identity/challenge`,
+        {
+          nonce: this.toBase64(nonce),
+          origin
+        },
+        { validateStatus: (s) => s === 200 }
+      );
+      challenge = r.data;
+    } catch (e) {
+      if (this.isRedirect(e)) return 'redirect';
+      return 'mismatch';
+    }
+    if (challenge?.fingerprint !== cred.fingerprint) return 'mismatch';
+
+    // Build the signed message from LOCAL values only (pinned serial, the origin
+    // we are using, our nonce). A captured signature cannot match a new nonce.
+    const message = buildIdentityMessage(cred.serial, origin, nonce);
+    const ok = await verifyIdentitySignature(
+      cred.publicKey,
+      message,
+      challenge.signature
+    );
+    if (!ok) return 'mismatch';
+
+    this.verifiedAt = Date.now();
+    this.verifiedFingerprint = cred.fingerprint;
+    cred.state = 'ok';
+    cred.lastOrigin = origin;
+    return 'ok';
+  }
+
+  private isRedirect(e: unknown): boolean {
+    const status = (e as { response?: { status?: number } })?.response?.status;
+    return typeof status === 'number' && status >= 300 && status < 400;
+  }
+
+  private toBase64(bytes: Uint8Array): string {
+    if (typeof Buffer !== 'undefined')
+      return Buffer.from(bytes).toString('base64');
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin);
   }
 
   disconnectSocket() {
@@ -235,8 +400,35 @@ export default class Api {
     // Socket.io. The token travels in the handshake `auth` payload; the machine
     // refuses the connection for an unpaired LAN client. (The Dial itself talks
     // over loopback and is exempt server-side.)
+    //
+    // With a pinned credential the `auth` is the FUNCTION form: socket.io-client
+    // calls it before every connection attempt (including automatic reconnects)
+    // and waits for the callback, so no CONNECT packet ever carries a token that
+    // has not just been verified for this origin. On mismatch we send {} (the
+    // server refuses) and stop reconnecting until a later verification succeeds.
+    const authFn = (cb: (data: { token?: string }) => void): void => {
+      if (!this.credential) {
+        cb(this.token ? { token: this.token } : {});
+        return;
+      }
+      this.ensureVerified()
+        .then((result) => {
+          if (result === 'ok') {
+            cb({ token: this.credential!.token });
+          } else {
+            if (result !== 'unreachable') {
+              this.credential!.state = 'identity_changed';
+              this.options?.onIdentityChanged?.(this.origin(), result);
+              this.socket?.io.reconnection(false);
+            }
+            cb({});
+          }
+        })
+        .catch(() => cb({}));
+    };
+
     this.socket = io(this.serverURL, {
-      auth: this.token ? { token: this.token } : {}
+      auth: this.credential ? authFn : this.token ? { token: this.token } : {}
     });
 
     if (this.options && this.options.onStatus) {
@@ -270,15 +462,76 @@ export default class Api {
   }
 
   // Approve by typing back the code shown on the Dial. On success the response
-  // carries the device token; call setToken() with it and persist it securely.
+  // carries the device token (plus the machine identity and serial). Prefer
+  // completePairing(), which also pins the identity; use this only for the
+  // legacy token flow.
   async verifyPairingCode(
     pairingId: string,
-    code: string
+    code: string,
+    clientPublicKey?: string
   ): Promise<AxiosResponse<PairingVerifyResult | APIError>> {
     return this.axiosInstance.post(`/api/${this.version}/pair/verify`, {
       pairing_id: pairingId,
-      code
+      code,
+      ...(clientPublicKey
+        ? { client_public_key: clientPublicKey, client_key_alg: 'ES256' }
+        : {})
     });
+  }
+
+  // The full first-pairing step: type back the code, then TRUST ON FIRST USE
+  // anchored on that code. The code proves the user saw the real Dial; the
+  // challenge proves the origin that returned the token holds the key it
+  // claims. The credential is pinned only if the challenge verifies.
+  async completePairing(
+    pairingId: string,
+    code: string,
+    clientPublicKey?: string
+  ): Promise<PinnedCredential> {
+    const res = await this.verifyPairingCode(pairingId, code, clientPublicKey);
+    const data = res.data as PairingVerifyResult & {
+      serial?: string;
+      identity?: MachineIdentity;
+    };
+    if (isAPIError(data) || !data.token) {
+      throw new Error('pairing failed');
+    }
+    if (
+      !data.identity ||
+      !data.identity.fingerprint ||
+      !data.identity.public_key
+    ) {
+      // A backend without identity cannot be pinned. Do not fall back to a bare
+      // token: that is the pre-identity behavior the rule exists to end.
+      throw new MachineIdentityError('no_identity', this.origin());
+    }
+    const serial = data.serial ?? '';
+    if (!serial) {
+      // An empty serial cannot anchor a per-serial credential (D8).
+      throw new Error(
+        'machine reported an empty serial; cannot pin credential'
+      );
+    }
+    // Sanity: the delivered fingerprint must match its own public key.
+    if (fingerprintOf(data.identity.public_key) !== data.identity.fingerprint) {
+      throw new MachineIdentityError('mismatch', this.origin());
+    }
+    const credential: PinnedCredential = {
+      serial,
+      fingerprint: data.identity.fingerprint,
+      publicKey: data.identity.public_key,
+      token: data.token,
+      state: 'ok'
+    };
+    // Verify once before trusting it (challenge against the pairing origin).
+    this.credential = credential;
+    this.verifiedAt = 0;
+    const result = await this.ensureVerified();
+    if (result !== 'ok') {
+      this.credential = undefined;
+      throw new MachineIdentityError(result, this.origin());
+    }
+    return credential;
   }
 
   // Poll a pairing session (used when approval happens with the Dial knob

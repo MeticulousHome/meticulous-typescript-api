@@ -19,7 +19,7 @@
     "format": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --write",
     "format:check": "prettier --config .prettierrc \"{src/**/,.github/**/,}*.{tsx,ts}\" --check",
     "prepare": "npm run build",
-    "test": "npm run build && node test/identity.test.cjs"
+    "test": "npm run build && node test/identity.test.cjs && node test/identity_rule.test.cjs"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

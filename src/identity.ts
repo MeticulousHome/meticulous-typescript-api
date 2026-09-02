@@ -29,6 +29,7 @@ export interface PinnedCredential {
   publicKey: string; // SPKI DER, base64
   token: string;
   lastOrigin?: string;
+  state?: 'ok' | 'identity_changed';
 }
 
 export type VerifyResult =
@@ -41,7 +42,8 @@ export type VerifyResult =
 // --- byte helpers ------------------------------------------------------------
 
 function b64ToBytes(b64: string): Uint8Array {
-  if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(b64, 'base64'));
+  if (typeof Buffer !== 'undefined')
+    return new Uint8Array(Buffer.from(b64, 'base64'));
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
@@ -83,9 +85,14 @@ function concat(...parts: Uint8Array[]): Uint8Array {
 export function buildIdentityMessage(
   serial: string,
   origin: string,
-  nonce: Uint8Array,
+  nonce: Uint8Array
 ): Uint8Array {
-  return concat(lp(utf8(DOMAIN)), lp(utf8(serial)), lp(utf8(origin)), lp(nonce));
+  return concat(
+    lp(utf8(DOMAIN)),
+    lp(utf8(serial)),
+    lp(utf8(origin)),
+    lp(nonce)
+  );
 }
 
 export function fingerprintOf(spkiB64: string): string {
@@ -105,14 +112,16 @@ export function canonicalOrigin(input: string): string {
   if (u.protocol !== 'http:' && u.protocol !== 'https:') {
     throw new OriginError('unsupported scheme');
   }
-  if (u.username || u.password) throw new OriginError('origin must not contain userinfo');
+  if (u.username || u.password)
+    throw new OriginError('origin must not contain userinfo');
   if ((u.pathname && u.pathname !== '/') || u.search || u.hash) {
     throw new OriginError('origin must not contain path, query or fragment');
   }
   const scheme = u.protocol.slice(0, -1);
   // u.hostname is already lowercased; for IPv6 it is bracketed and compressed.
   let host = u.hostname.toLowerCase();
-  if (host.includes('%')) throw new OriginError('IPv6 zone-ids are not allowed');
+  if (host.includes('%'))
+    throw new OriginError('IPv6 zone-ids are not allowed');
   if (!host.startsWith('[')) host = host.replace(/\.$/, ''); // trailing-dot FQDN
   if (!host || host === '[]') throw new OriginError('origin has no host');
   const def = scheme === 'http' ? '80' : '443';
@@ -141,7 +150,7 @@ function hasSubtle(): boolean {
 export async function verifyIdentitySignature(
   spkiB64: string,
   message: Uint8Array,
-  signatureB64: string,
+  signatureB64: string
 ): Promise<boolean> {
   const sig = b64ToBytes(signatureB64);
   if (sig.length !== 64) return false;
@@ -153,13 +162,13 @@ export async function verifyIdentitySignature(
         spki,
         { name: 'ECDSA', namedCurve: 'P-256' },
         false,
-        ['verify'],
+        ['verify']
       );
       return await globalThis.crypto.subtle.verify(
         { name: 'ECDSA', hash: 'SHA-256' },
         key,
         sig,
-        message,
+        message
       );
     }
     // Insecure-context browser: verify with noble. `prehash: true` makes noble
