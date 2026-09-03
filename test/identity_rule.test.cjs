@@ -13,13 +13,19 @@ async function genKey() {
     true,
     ['sign', 'verify']
   );
-  const spki = new Uint8Array(await crypto.subtle.exportKey('spki', kp.publicKey));
+  const spki = new Uint8Array(
+    await crypto.subtle.exportKey('spki', kp.publicKey)
+  );
   return { kp, spkiB64: b64(spki), fingerprint: api.fingerprintOf(b64(spki)) };
 }
 
 async function sign(privKey, message) {
   const sig = new Uint8Array(
-    await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privKey, message)
+    await crypto.subtle.sign(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      privKey,
+      message
+    )
   );
   return b64(sig); // WebCrypto returns P1363 r||s
 }
@@ -42,6 +48,7 @@ function makeServer(opts) {
   const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const url = req.url.split('?')[0];
+    if (req.headers['authorization']) state.sawAuthOn.push(url);
     if (mode === 'redirect') {
       res.writeHead(302, { Location: 'http://evil.example/' });
       res.end();
@@ -50,14 +57,22 @@ function makeServer(opts) {
     if (url === '/api/v1/machine') {
       const out = { name: 'Fake', serial };
       if (mode !== 'noident') {
-        out.identity = { alg: 'ES256', public_key: key.spkiB64, fingerprint: key.fingerprint };
+        out.identity = {
+          alg: 'ES256',
+          public_key: key.spkiB64,
+          fingerprint: key.fingerprint
+        };
       }
       return json(res, 200, out);
     }
     if (url === '/api/v1/identity/challenge') {
       if (mode === 'noident') return json(res, 404, { error: 'no identity' });
       const { nonce, origin } = JSON.parse(body || '{}');
-      const msg = api.buildIdentityMessage(serial, origin, new Uint8Array(Buffer.from(nonce, 'base64')));
+      const msg = api.buildIdentityMessage(
+        serial,
+        origin,
+        new Uint8Array(Buffer.from(nonce, 'base64'))
+      );
       const signature = await sign((signKey || key).kp.privateKey, msg);
       return json(res, 200, {
         alg: 'ES256',
@@ -70,15 +85,23 @@ function makeServer(opts) {
       });
     }
     if (url === '/api/v1/pair/verify') {
-      const out = { status: 'approved', token: 'TOKEN-123', device_id: 'd1', serial };
+      const out = {
+        status: 'approved',
+        token: 'TOKEN-123',
+        device_id: 'd1',
+        serial
+      };
       if (mode !== 'noident') {
-        out.identity = { alg: 'ES256', public_key: key.spkiB64, fingerprint: key.fingerprint };
+        out.identity = {
+          alg: 'ES256',
+          public_key: key.spkiB64,
+          fingerprint: key.fingerprint
+        };
       }
       return json(res, 200, out);
     }
     if (url.startsWith('/api/v1/settings')) {
       if (req.headers['authorization']) {
-        state.sawAuthOn.push('settings');
         return json(res, 200, {});
       }
       return json(res, 401, { error: 'Unauthorized' });
@@ -89,7 +112,25 @@ function makeServer(opts) {
 }
 
 function listen(server) {
-  return new Promise((r) => server.listen(0, '127.0.0.1', () => r(server.address().port)));
+  return new Promise((r) =>
+    server.listen(0, '127.0.0.1', () => r(server.address().port))
+  );
+}
+
+function listenOn(server, port) {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => {
+      server.removeListener('error', reject);
+      resolve();
+    });
+  });
+}
+
+function close(server) {
+  return new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
 }
 
 (async () => {
@@ -106,7 +147,11 @@ function listen(server) {
     assert.strictEqual(cred.serial, serial);
     assert.strictEqual(cred.fingerprint, key.fingerprint);
     await client.getSettings();
-    assert.deepStrictEqual(state.sawAuthOn, ['settings'], 'token sent to the real machine');
+    assert.deepStrictEqual(
+      state.sawAuthOn,
+      ['/api/v1/settings/'],
+      'token sent to the real machine'
+    );
     server.close();
     pass++;
   }
@@ -117,16 +162,28 @@ function listen(server) {
     const { server, state } = makeServer({ key: other, serial, mode: 'real' });
     const port = await listen(server);
     const client = new Api({}, `http://127.0.0.1:${port}`);
-    client.setCredential({ serial, fingerprint: key.fingerprint, publicKey: key.spkiB64, token: 'TOKEN-123' });
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-123'
+    });
     let threw = null;
     try {
       await client.getSettings();
     } catch (e) {
       threw = e;
     }
-    assert.ok(threw instanceof api.MachineIdentityError, 'impostor request throws');
+    assert.ok(
+      threw instanceof api.MachineIdentityError,
+      'impostor request throws'
+    );
     assert.strictEqual(threw.result, 'mismatch');
-    assert.deepStrictEqual(state.sawAuthOn, [], 'NO Authorization ever reached the impostor');
+    assert.deepStrictEqual(
+      state.sawAuthOn,
+      [],
+      'NO Authorization ever reached the impostor'
+    );
     server.close();
     pass++;
   }
@@ -136,18 +193,35 @@ function listen(server) {
     const other = await genKey();
     // /machine serves the REAL fingerprint+public_key, but challenges are signed
     // with `other` -> the client verifies with the pinned key and rejects.
-    const { server, state } = makeServer({ key, serial, mode: 'forged-fp', signKey: other });
+    const { server, state } = makeServer({
+      key,
+      serial,
+      mode: 'forged-fp',
+      signKey: other
+    });
     const port = await listen(server);
     const client = new Api({}, `http://127.0.0.1:${port}`);
-    client.setCredential({ serial, fingerprint: key.fingerprint, publicKey: key.spkiB64, token: 'T' });
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'T'
+    });
     let threw = null;
     try {
       await client.getSettings();
     } catch (e) {
       threw = e;
     }
-    assert.ok(threw instanceof api.MachineIdentityError && threw.result === 'mismatch', 'forged fp, bad signature -> mismatch');
-    assert.deepStrictEqual(state.sawAuthOn, [], 'no token to the forged-fp impostor');
+    assert.ok(
+      threw instanceof api.MachineIdentityError && threw.result === 'mismatch',
+      'forged fp, bad signature -> mismatch'
+    );
+    assert.deepStrictEqual(
+      state.sawAuthOn,
+      [],
+      'no token to the forged-fp impostor'
+    );
     server.close();
     pass++;
   }
@@ -163,7 +237,11 @@ function listen(server) {
     } catch (e) {
       threw = e;
     }
-    assert.ok(threw instanceof api.MachineIdentityError && threw.result === 'no_identity', 'no-identity backend not pinned');
+    assert.ok(
+      threw instanceof api.MachineIdentityError &&
+        threw.result === 'no_identity',
+      'no-identity backend not pinned'
+    );
     server.close();
     pass++;
   }
@@ -173,7 +251,12 @@ function listen(server) {
     const { server, state } = makeServer({ key, serial, mode: 'redirect' });
     const port = await listen(server);
     const client = new Api({}, `http://127.0.0.1:${port}`);
-    client.setCredential({ serial, fingerprint: key.fingerprint, publicKey: key.spkiB64, token: 'T' });
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'T'
+    });
     let threw = null;
     try {
       await client.getSettings();
@@ -187,7 +270,129 @@ function listen(server) {
     pass++;
   }
 
-  console.log(`ALL ${pass} client-rule checks PASS (happy path sends token; impostor / forged-fingerprint / no-identity / redirect all withhold it)`);
+  // 6) the pinned public key is not enough if the server reports another serial
+  {
+    const { server, state } = makeServer({
+      key,
+      serial: 'MET-RULE-WRONG',
+      mode: 'real'
+    });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`);
+    const credential = {
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-123'
+    };
+    client.setCredential(credential);
+    let threw = null;
+    try {
+      await client.getSettings();
+    } catch (e) {
+      threw = e;
+    }
+    assert.ok(
+      threw instanceof api.MachineIdentityError && threw.result === 'mismatch',
+      'wrong serial -> mismatch'
+    );
+    assert.deepStrictEqual(
+      state.sawAuthOn,
+      [],
+      'wrong-serial server received no credential'
+    );
+    assert.strictEqual(
+      client.getCredential(),
+      credential,
+      'credential is retained for recovery'
+    );
+    assert.strictEqual(credential.state, 'identity_changed');
+    server.close();
+    pass++;
+  }
+
+  // 7) a serial that was previously pinned may not silently downgrade to legacy
+  {
+    const { server, state } = makeServer({ key, serial, mode: 'noident' });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`);
+    const credential = {
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-123'
+    };
+    client.setCredential(credential);
+    let threw = null;
+    try {
+      await client.getSettings();
+    } catch (e) {
+      threw = e;
+    }
+    assert.ok(
+      threw instanceof api.MachineIdentityError &&
+        threw.result === 'no_identity',
+      'pinned serial losing identity -> no_identity'
+    );
+    assert.deepStrictEqual(
+      state.sawAuthOn,
+      [],
+      'legacy response received no credential from a pinned client'
+    );
+    assert.strictEqual(credential.state, 'identity_changed');
+    server.close();
+    pass++;
+  }
+
+  // 8) after an impostor leaves the same origin, the genuine machine clears the
+  // identity_changed state and can receive the retained credential again.
+  {
+    const impostor = await genKey();
+    const first = makeServer({ key: impostor, serial, mode: 'real' });
+    const port = await listen(first.server);
+    const origin = `http://127.0.0.1:${port}`;
+    const client = new Api({}, origin);
+    const credential = {
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-123'
+    };
+    client.setCredential(credential);
+    await assert.rejects(client.getSettings(), api.MachineIdentityError);
+    assert.strictEqual(credential.state, 'identity_changed');
+    assert.deepStrictEqual(
+      first.state.sawAuthOn,
+      [],
+      'impostor received no credential'
+    );
+    await close(first.server);
+
+    const genuine = makeServer({ key, serial, mode: 'real' });
+    await listenOn(genuine.server, port);
+    try {
+      await client.getSettings();
+    } catch (error) {
+      // Node's pooled connection can observe one ECONNRESET when the listener
+      // at an origin is replaced. An unreachable result is transient and does
+      // not change or erase the retained credential; the next request must
+      // verify the genuine machine and recover.
+      assert.ok(
+        error instanceof api.MachineIdentityError &&
+          error.result === 'unreachable'
+      );
+      await client.getSettings();
+    }
+    assert.strictEqual(credential.state, 'ok');
+    assert.strictEqual(credential.lastOrigin, origin);
+    assert.deepStrictEqual(genuine.state.sawAuthOn, ['/api/v1/settings/']);
+    await close(genuine.server);
+    pass++;
+  }
+
+  console.log(
+    `ALL ${pass} client-rule checks PASS (happy/recovery send token; impostor / forged-fingerprint / wrong-serial / pinned-legacy / redirect all withhold it)`
+  );
 })().catch((e) => {
   console.error('FAIL:', (e && e.stack) || e);
   process.exit(1);
