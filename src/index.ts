@@ -201,6 +201,10 @@ export default class Api {
   // possession of `credential.publicKey`. A legacy token with no credential
   // keeps the old behavior (for a backend that has no identity yet).
   private credential?: PinnedCredential;
+  // Incremented whenever the credential reference is replaced. Identity
+  // proofs are asynchronous; without a generation check, a proof for an old
+  // key can finish after re-pairing and accidentally authorize the new token.
+  private credentialRevision = 0;
   // Credential-less axios instance for the identity probes (GET /machine,
   // POST /identity/challenge). It carries NO interceptor, so verification never
   // recurses, and never follows a redirect (a 3xx is a failure, not a hop to
@@ -233,27 +237,40 @@ export default class Api {
       headers: { Accept: 'application/json' }
     });
 
+    // maxRedirects is honored by Axios' Node adapter, but browsers use XHR,
+    // which follows redirects automatically. XHR exposes the effective URL;
+    // reject a changed one before any response can count as an identity proof
+    // or physically-approved pairing response.
+    this.probeAxios.interceptors.response.use((response) => {
+      const responseURL = (response.request as { responseURL?: unknown })
+        ?.responseURL;
+      if (typeof responseURL === 'string' && responseURL) {
+        const requestedURL = new URL(
+          response.config.url ?? '',
+          response.config.baseURL ?? this.serverURL
+        ).toString();
+        let effectiveURL: string;
+        try {
+          effectiveURL = new URL(responseURL).toString();
+        } catch {
+          throw new MachineIdentityError('redirect', this.origin());
+        }
+        if (effectiveURL !== requestedURL) {
+          throw new MachineIdentityError('redirect', this.origin());
+        }
+      }
+      return response;
+    });
+
     // Before attaching the token, prove the origin holds the pinned identity
     // key. This is the whole guarantee: a substitute server at a reused address
     // cannot sign the challenge, so the token is never sent to it. The probe
     // uses probeAxios (no interceptor), so this does not recurse.
     this.axiosInstance.interceptors.request.use(async (config) => {
-      if (this.credential) {
-        const result = await this.ensureVerified();
-        if (result !== 'ok') {
-          if (result !== 'unreachable') {
-            this.credential.state = 'identity_changed';
-            this.options?.onIdentityChanged?.(this.origin(), result);
-          }
-          throw new MachineIdentityError(result, this.origin());
-        }
+      const token = await this.getVerifiedToken();
+      if (token) {
         config.headers = config.headers ?? {};
-        config.headers.Authorization = `Bearer ${this.credential.token}`;
-      } else if (this.token) {
-        // Legacy path: no pinned identity (e.g. an older backend). Attach the
-        // bearer as before.
-        config.headers = config.headers ?? {};
-        config.headers.Authorization = `Bearer ${this.token}`;
+        config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
     });
@@ -296,6 +313,7 @@ export default class Api {
   // now on the identity rule is enforced for this origin.
   setCredential(credential: PinnedCredential | undefined) {
     this.credential = credential;
+    this.credentialRevision++;
     this.verifiedAt = 0;
     if (this.socket !== undefined) {
       this.disconnectSocket();
@@ -305,6 +323,36 @@ export default class Api {
 
   getCredential(): PinnedCredential | undefined {
     return this.credential;
+  }
+
+  // Return the exact token whose credential remained current throughout its
+  // proof. A caller can safely attach this captured value even if a later UI
+  // action replaces the stored credential before the request is dispatched.
+  // If a pin is removed while verification is in flight, never fall back to a
+  // legacy token that was not part of the proof.
+  async getVerifiedToken(): Promise<string | undefined> {
+    const startedWithCredential = this.credential !== undefined;
+    while (this.credential) {
+      const credential = this.credential;
+      const revision = this.credentialRevision;
+      const result = await this.ensureVerified();
+
+      if (
+        this.credential !== credential ||
+        this.credentialRevision !== revision
+      ) {
+        continue;
+      }
+      if (result !== 'ok') {
+        if (result !== 'unreachable') {
+          credential.state = 'identity_changed';
+          this.options?.onIdentityChanged?.(this.origin(), result);
+        }
+        throw new MachineIdentityError(result, this.origin());
+      }
+      return credential.token;
+    }
+    return startedWithCredential ? undefined : this.token;
   }
 
   // The client rule, run before any credential leaves the device. Verifies that
@@ -373,6 +421,9 @@ export default class Api {
   }
 
   private isRedirect(e: unknown): boolean {
+    if (e instanceof MachineIdentityError && e.result === 'redirect') {
+      return true;
+    }
     const status = (e as { response?: { status?: number } })?.response?.status;
     return typeof status === 'number' && status >= 300 && status < 400;
   }
@@ -406,18 +457,31 @@ export default class Api {
     // and waits for the callback, so no CONNECT packet ever carries a token that
     // has not just been verified for this origin. On mismatch we send {} (the
     // server refuses) and stop reconnecting until a later verification succeeds.
+    const credential = this.credential;
+    const credentialRevision = this.credentialRevision;
+    const legacyToken = this.token;
     const authFn = (cb: (data: { token?: string }) => void): void => {
-      if (!this.credential) {
-        cb(this.token ? { token: this.token } : {});
+      if (!credential) {
+        cb(legacyToken ? { token: legacyToken } : {});
         return;
       }
+      // Every Socket.IO CONNECT/reconnect is a forced-clear trigger (D2), not
+      // merely another consumer of an HTTP proof that may be 60 seconds old.
+      this.verifiedAt = 0;
       this.ensureVerified()
         .then((result) => {
+          if (
+            this.credential !== credential ||
+            this.credentialRevision !== credentialRevision
+          ) {
+            cb({});
+            return;
+          }
           if (result === 'ok') {
-            cb({ token: this.credential!.token });
+            cb({ token: credential.token });
           } else {
             if (result !== 'unreachable') {
-              this.credential!.state = 'identity_changed';
+              credential.state = 'identity_changed';
               this.options?.onIdentityChanged?.(this.origin(), result);
               this.socket?.io.reconnection(false);
             }
@@ -428,7 +492,7 @@ export default class Api {
     };
 
     this.socket = io(this.serverURL, {
-      auth: this.credential ? authFn : this.token ? { token: this.token } : {}
+      auth: credential ? authFn : legacyToken ? { token: legacyToken } : {}
     });
 
     if (this.options && this.options.onStatus) {
@@ -456,7 +520,7 @@ export default class Api {
   async requestPairing(
     deviceName: string
   ): Promise<AxiosResponse<PairingRequest | APIError>> {
-    return this.axiosInstance.post(`/api/${this.version}/pair/request`, {
+    return this.probeAxios.post(`/api/${this.version}/pair/request`, {
       device_name: deviceName
     });
   }
@@ -470,7 +534,7 @@ export default class Api {
     code: string,
     clientPublicKey?: string
   ): Promise<AxiosResponse<PairingVerifyResult | APIError>> {
-    return this.axiosInstance.post(`/api/${this.version}/pair/verify`, {
+    return this.probeAxios.post(`/api/${this.version}/pair/verify`, {
       pairing_id: pairingId,
       code,
       ...(clientPublicKey
@@ -525,10 +589,18 @@ export default class Api {
     };
     // Verify once before trusting it (challenge against the pairing origin).
     this.credential = credential;
+    const credentialRevision = ++this.credentialRevision;
     this.verifiedAt = 0;
     const result = await this.ensureVerified();
+    if (
+      this.credential !== credential ||
+      this.credentialRevision !== credentialRevision
+    ) {
+      throw new Error('pairing superseded by a newer credential');
+    }
     if (result !== 'ok') {
       this.credential = undefined;
+      this.credentialRevision++;
       throw new MachineIdentityError(result, this.origin());
     }
     return credential;
@@ -539,9 +611,7 @@ export default class Api {
   async getPairingStatus(
     pairingId: string
   ): Promise<AxiosResponse<PairingStatus | APIError>> {
-    return this.axiosInstance.get(
-      `/api/${this.version}/pair/status/${pairingId}`
-    );
+    return this.probeAxios.get(`/api/${this.version}/pair/status/${pairingId}`);
   }
 
   // List the devices currently paired with the machine (needs a valid token).

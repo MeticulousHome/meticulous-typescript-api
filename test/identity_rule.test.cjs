@@ -43,12 +43,22 @@ function json(res, code, obj) {
 
 // mode: 'real' | 'noident' | 'redirect' | 'forged-fp'
 function makeServer(opts) {
-  const { key, serial, mode, signKey } = opts;
-  const state = { sawAuthOn: [] };
+  const {
+    key,
+    serial,
+    mode,
+    signKey,
+    token = 'TOKEN-123',
+    challengeGate
+  } = opts;
+  const state = { sawAuthOn: [], sawAuthorization: [], challengeCount: 0 };
   const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const url = req.url.split('?')[0];
-    if (req.headers['authorization']) state.sawAuthOn.push(url);
+    if (req.headers['authorization']) {
+      state.sawAuthOn.push(url);
+      state.sawAuthorization.push(req.headers['authorization']);
+    }
     if (mode === 'redirect') {
       res.writeHead(302, { Location: 'http://evil.example/' });
       res.end();
@@ -67,6 +77,11 @@ function makeServer(opts) {
     }
     if (url === '/api/v1/identity/challenge') {
       if (mode === 'noident') return json(res, 404, { error: 'no identity' });
+      state.challengeCount++;
+      if (challengeGate) {
+        challengeGate.started.resolve();
+        await challengeGate.release.promise;
+      }
       const { nonce, origin } = JSON.parse(body || '{}');
       const msg = api.buildIdentityMessage(
         serial,
@@ -84,10 +99,13 @@ function makeServer(opts) {
         signature
       });
     }
+    if (url === '/api/v1/pair/request') {
+      return json(res, 200, { pairing_id: 'pid', expires_in: 180 });
+    }
     if (url === '/api/v1/pair/verify') {
       const out = {
         status: 'approved',
-        token: 'TOKEN-123',
+        token,
         device_id: 'd1',
         serial
       };
@@ -131,6 +149,18 @@ function close(server) {
   return new Promise((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
   });
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
+function challengeGate() {
+  return { started: deferred(), release: deferred() };
 }
 
 (async () => {
@@ -390,8 +420,254 @@ function close(server) {
     pass++;
   }
 
+  // 9) typed-code approval is the authority to replace an old identity pin.
+  // Public pairing requests must therefore stay credential-less and must not be
+  // blocked by the old key at the same origin.
+  {
+    const replacement = await genKey();
+    const { server, state } = makeServer({
+      key: replacement,
+      serial,
+      mode: 'real',
+      token: 'TOKEN-REPLACEMENT'
+    });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`);
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-OLD'
+    });
+
+    const request = await client.requestPairing('replacement test');
+    assert.strictEqual(request.data.pairing_id, 'pid');
+    const credential = await client.completePairing('pid', '123456');
+    assert.strictEqual(credential.fingerprint, replacement.fingerprint);
+    assert.strictEqual(credential.token, 'TOKEN-REPLACEMENT');
+    assert.deepStrictEqual(
+      state.sawAuthOn,
+      [],
+      'old credential never reaches public pairing endpoints'
+    );
+
+    await client.getSettings();
+    assert.deepStrictEqual(state.sawAuthorization, [
+      'Bearer TOKEN-REPLACEMENT'
+    ]);
+    await close(server);
+    pass++;
+  }
+
+  // 10) a credential replacement while an old proof is in flight must not
+  // authorize the replacement token under the old key.
+  {
+    const replacement = await genKey();
+    const gate = challengeGate();
+    const { server, state } = makeServer({
+      key,
+      serial,
+      mode: 'real',
+      challengeGate: gate
+    });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`);
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-OLD'
+    });
+
+    const pending = client.getSettings();
+    await gate.started.promise;
+    client.setCredential({
+      serial,
+      fingerprint: replacement.fingerprint,
+      publicKey: replacement.spkiB64,
+      token: 'TOKEN-REPLACEMENT'
+    });
+    gate.release.resolve();
+
+    await assert.rejects(
+      pending,
+      (error) =>
+        error instanceof api.MachineIdentityError && error.result === 'mismatch'
+    );
+    assert.deepStrictEqual(
+      state.sawAuthorization,
+      [],
+      'replacement token is withheld when only the old key was proved'
+    );
+    await close(server);
+    pass++;
+  }
+
+  // 11) every Socket.IO auth callback forces a fresh challenge even when an
+  // HTTP proof is still inside the ordinary 60-second cache.
+  {
+    const { server, state } = makeServer({ key, serial, mode: 'real' });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`);
+    await client.completePairing('pid', '123456');
+    assert.strictEqual(state.challengeCount, 1);
+
+    client.connectToSocket();
+    const socket = client.getSocket();
+    socket.disconnect();
+    assert.strictEqual(typeof socket.auth, 'function');
+    const auth = await new Promise((resolve) => socket.auth(resolve));
+    assert.deepStrictEqual(auth, { token: 'TOKEN-123' });
+    assert.strictEqual(
+      state.challengeCount,
+      2,
+      'socket auth bypassed the HTTP freshness cache'
+    );
+    client.disconnectSocket();
+    await close(server);
+    pass++;
+  }
+
+  // 12) browser XHR follows redirects even when Axios maxRedirects is zero.
+  // A changed responseURL must therefore fail the proof explicitly.
+  {
+    const { server, state } = makeServer({ key, serial, mode: 'real' });
+    const port = await listen(server);
+    const origin = `http://127.0.0.1:${port}`;
+    const client = new Api({}, origin);
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-123'
+    });
+    client.probeAxios.defaults.adapter = async (config) => {
+      const requestUrl = new URL(config.url, config.baseURL).toString();
+      if (config.url.endsWith('/machine')) {
+        return {
+          data: {
+            name: 'Fake',
+            serial,
+            identity: {
+              alg: 'ES256',
+              public_key: key.spkiB64,
+              fingerprint: key.fingerprint
+            }
+          },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          request: { responseURL: `${origin}/redirected-machine` }
+        };
+      }
+      const body = JSON.parse(config.data || '{}');
+      const message = api.buildIdentityMessage(
+        serial,
+        body.origin,
+        new Uint8Array(Buffer.from(body.nonce, 'base64'))
+      );
+      return {
+        data: {
+          fingerprint: key.fingerprint,
+          signature: await sign(key.kp.privateKey, message)
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+        request: { responseURL: requestUrl }
+      };
+    };
+
+    await assert.rejects(
+      client.getSettings(),
+      (error) =>
+        error instanceof api.MachineIdentityError && error.result === 'redirect'
+    );
+    assert.deepStrictEqual(state.sawAuthorization, []);
+    await close(server);
+    pass++;
+  }
+
+  // 13) an obsolete Socket.IO auth callback must not release the replacement
+  // token after setCredential() has already created a new generation.
+  {
+    const replacement = await genKey();
+    const gate = challengeGate();
+    const { server } = makeServer({
+      key,
+      serial,
+      mode: 'real',
+      challengeGate: gate
+    });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`);
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-OLD'
+    });
+    client.connectToSocket();
+    const obsoleteSocket = client.getSocket();
+    const obsoleteAuth = obsoleteSocket.auth;
+    client.disconnectSocket();
+
+    const pendingAuth = new Promise((resolve) => obsoleteAuth(resolve));
+    await gate.started.promise;
+    client.setCredential({
+      serial,
+      fingerprint: replacement.fingerprint,
+      publicKey: replacement.spkiB64,
+      token: 'TOKEN-REPLACEMENT'
+    });
+    gate.release.resolve();
+
+    assert.deepStrictEqual(
+      await pendingAuth,
+      {},
+      'obsolete socket callback withheld the replacement token'
+    );
+    await close(server);
+    pass++;
+  }
+
+  // 14) clearing a pin during an in-flight proof must not fall back to an
+  // unrelated legacy token configured on the same client instance.
+  {
+    const gate = challengeGate();
+    const { server, state } = makeServer({
+      key,
+      serial,
+      mode: 'real',
+      challengeGate: gate
+    });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`, 'TOKEN-LEGACY');
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-PINNED'
+    });
+
+    const pending = client.getSettings();
+    await gate.started.promise;
+    client.setCredential(undefined);
+    gate.release.resolve();
+    await assert.rejects(pending);
+    assert.deepStrictEqual(
+      state.sawAuthorization,
+      [],
+      'removed pin never falls through to the legacy bearer'
+    );
+    await close(server);
+    pass++;
+  }
+
   console.log(
-    `ALL ${pass} client-rule checks PASS (happy/recovery send token; impostor / forged-fingerprint / wrong-serial / pinned-legacy / redirect all withhold it)`
+    `ALL ${pass} client-rule checks PASS (happy/recovery/re-pair send only the current token; impostor / forged-fingerprint / wrong-serial / pinned-legacy / redirect / credential race all withhold it)`
   );
 })().catch((e) => {
   console.error('FAIL:', (e && e.stack) || e);
