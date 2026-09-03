@@ -225,6 +225,7 @@ export default class Api {
     // AXIOS
     this.axiosInstance = axios.create({
       baseURL: serverURL,
+      maxRedirects: 0,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json'
@@ -241,7 +242,7 @@ export default class Api {
     // which follows redirects automatically. XHR exposes the effective URL;
     // reject a changed one before any response can count as an identity proof
     // or physically-approved pairing response.
-    this.probeAxios.interceptors.response.use((response) => {
+    const rejectEffectiveRedirect = (response: AxiosResponse) => {
       const responseURL = (response.request as { responseURL?: unknown })
         ?.responseURL;
       if (typeof responseURL === 'string' && responseURL) {
@@ -260,7 +261,8 @@ export default class Api {
         }
       }
       return response;
-    });
+    };
+    this.probeAxios.interceptors.response.use(rejectEffectiveRedirect);
 
     // Before attaching the token, prove the origin holds the pinned identity
     // key. This is the whole guarantee: a substitute server at a reused address
@@ -275,12 +277,31 @@ export default class Api {
       return config;
     });
 
-    // Surface a 401 so the app can guide re-pairing. Clear the verification
-    // cache so the next credentialed request re-verifies (ADV-016: only the
-    // credential that made the rejected request is affected).
+    // Surface a 401 so the app can guide re-pairing, and reject redirects from
+    // credentialed endpoints in both Node and browser transports. Clear the
+    // verification cache so the next credentialed request re-verifies
+    // (ADV-016: only the credential that made the rejected request is affected).
+    const credentialedRedirectError = () => {
+      this.verifiedAt = 0;
+      if (this.credential) {
+        this.credential.state = 'identity_changed';
+        this.options?.onIdentityChanged?.(this.origin(), 'redirect');
+      }
+      return new MachineIdentityError('redirect', this.origin());
+    };
     this.axiosInstance.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        try {
+          return rejectEffectiveRedirect(response);
+        } catch (error) {
+          if (this.isRedirect(error)) throw credentialedRedirectError();
+          throw error;
+        }
+      },
       (error) => {
+        if (this.isRedirect(error)) {
+          return Promise.reject(credentialedRedirectError());
+        }
         if (error?.response?.status === 401) {
           this.verifiedAt = 0;
           this.options?.onUnauthorized?.();

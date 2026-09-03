@@ -41,7 +41,7 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
-// mode: 'real' | 'noident' | 'redirect' | 'forged-fp'
+// mode: 'real' | 'noident' | 'redirect' | 'forged-fp' | 'replay-after-first'
 function makeServer(opts) {
   const {
     key,
@@ -49,9 +49,15 @@ function makeServer(opts) {
     mode,
     signKey,
     token = 'TOKEN-123',
-    challengeGate
+    challengeGate,
+    credentialRedirectTarget
   } = opts;
-  const state = { sawAuthOn: [], sawAuthorization: [], challengeCount: 0 };
+  const state = {
+    sawAuthOn: [],
+    sawAuthorization: [],
+    challengeCount: 0,
+    firstChallengeSignature: undefined
+  };
   const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const url = req.url.split('?')[0];
@@ -88,7 +94,13 @@ function makeServer(opts) {
         origin,
         new Uint8Array(Buffer.from(nonce, 'base64'))
       );
-      const signature = await sign((signKey || key).kp.privateKey, msg);
+      let signature;
+      if (mode === 'replay-after-first' && state.firstChallengeSignature) {
+        signature = state.firstChallengeSignature;
+      } else {
+        signature = await sign((signKey || key).kp.privateKey, msg);
+        state.firstChallengeSignature = signature;
+      }
       return json(res, 200, {
         alg: 'ES256',
         serial,
@@ -119,6 +131,11 @@ function makeServer(opts) {
       return json(res, 200, out);
     }
     if (url.startsWith('/api/v1/settings')) {
+      if (credentialRedirectTarget) {
+        res.writeHead(302, { Location: credentialRedirectTarget });
+        res.end();
+        return;
+      }
       if (req.headers['authorization']) {
         return json(res, 200, {});
       }
@@ -666,8 +683,245 @@ function challengeGate() {
     pass++;
   }
 
+  // 15) the ordinary HTTP proof is cached for less than 60 seconds, then the
+  // next credentialed request must perform a fresh challenge before sending.
+  {
+    const { server, state } = makeServer({ key, serial, mode: 'real' });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`);
+    const realNow = Date.now;
+    let now = realNow();
+    Date.now = () => now;
+    try {
+      await client.completePairing('pid', '123456');
+      assert.strictEqual(state.challengeCount, 1);
+      await client.getSettings();
+      assert.strictEqual(
+        state.challengeCount,
+        1,
+        'an HTTP request inside the TTL reuses the proof'
+      );
+      now += 60_000;
+      await client.getSettings();
+      assert.strictEqual(
+        state.challengeCount,
+        2,
+        'the first HTTP request at the TTL boundary proves again'
+      );
+    } finally {
+      Date.now = realNow;
+      await close(server);
+    }
+    pass++;
+  }
+
+  // 16) a signature captured from a valid proof cannot answer a later fresh
+  // nonce after the TTL expires, so the bearer remains withheld.
+  {
+    const { server, state } = makeServer({
+      key,
+      serial,
+      mode: 'replay-after-first'
+    });
+    const port = await listen(server);
+    const client = new Api({}, `http://127.0.0.1:${port}`);
+    const realNow = Date.now;
+    let now = realNow();
+    Date.now = () => now;
+    try {
+      await client.completePairing('pid', '123456');
+      now += 60_000;
+      await assert.rejects(
+        client.getSettings(),
+        (error) =>
+          error instanceof api.MachineIdentityError &&
+          error.result === 'mismatch'
+      );
+      assert.strictEqual(state.challengeCount, 2);
+      assert.deepStrictEqual(
+        state.sawAuthorization,
+        [],
+        'a replayed proof never releases the bearer'
+      );
+    } finally {
+      Date.now = realNow;
+      await close(server);
+    }
+    pass++;
+  }
+
+  // 17) browser XHR can also follow a redirect on the challenge endpoint. Its
+  // changed effective URL is a redirect failure even if the body is well signed.
+  {
+    const origin = 'http://127.0.0.1:1';
+    const client = new Api({}, origin);
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-123'
+    });
+    client.probeAxios.defaults.adapter = async (config) => {
+      const requestUrl = new URL(config.url, config.baseURL).toString();
+      if (config.url.endsWith('/machine')) {
+        return {
+          data: {
+            name: 'Fake',
+            serial,
+            identity: {
+              alg: 'ES256',
+              public_key: key.spkiB64,
+              fingerprint: key.fingerprint
+            }
+          },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          request: { responseURL: requestUrl }
+        };
+      }
+      const body = JSON.parse(config.data || '{}');
+      const message = api.buildIdentityMessage(
+        serial,
+        body.origin,
+        new Uint8Array(Buffer.from(body.nonce, 'base64'))
+      );
+      return {
+        data: {
+          fingerprint: key.fingerprint,
+          signature: await sign(key.kp.privateKey, message)
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+        request: { responseURL: `${origin}/redirected-challenge` }
+      };
+    };
+
+    await assert.rejects(
+      client.getSettings(),
+      (error) =>
+        error instanceof api.MachineIdentityError && error.result === 'redirect'
+    );
+    pass++;
+  }
+
+  // 18) after a valid proof, a browser-followed redirect on the credentialed
+  // request itself is still rejected by comparing XHR's effective URL.
+  {
+    const origin = 'http://127.0.0.1:1';
+    const client = new Api({}, origin);
+    client.setCredential({
+      serial,
+      fingerprint: key.fingerprint,
+      publicKey: key.spkiB64,
+      token: 'TOKEN-123'
+    });
+    client.probeAxios.defaults.adapter = async (config) => {
+      const requestUrl = new URL(config.url, config.baseURL).toString();
+      if (config.url.endsWith('/machine')) {
+        return {
+          data: {
+            name: 'Fake',
+            serial,
+            identity: {
+              alg: 'ES256',
+              public_key: key.spkiB64,
+              fingerprint: key.fingerprint
+            }
+          },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          request: { responseURL: requestUrl }
+        };
+      }
+      const body = JSON.parse(config.data || '{}');
+      const message = api.buildIdentityMessage(
+        serial,
+        body.origin,
+        new Uint8Array(Buffer.from(body.nonce, 'base64'))
+      );
+      return {
+        data: {
+          fingerprint: key.fingerprint,
+          signature: await sign(key.kp.privateKey, message)
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+        request: { responseURL: requestUrl }
+      };
+    };
+    client.axiosInstance.defaults.adapter = async (config) => ({
+      data: {},
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+      request: { responseURL: `${origin}/redirected-settings` }
+    });
+
+    await assert.rejects(
+      client.getSettings(),
+      (error) =>
+        error instanceof api.MachineIdentityError && error.result === 'redirect'
+    );
+    pass++;
+  }
+
+  // 19) the Node adapter must not follow a 3xx returned by a credentialed
+  // endpoint. The already-verified source sees its bearer, but the redirect
+  // destination receives no request and therefore no credential.
+  {
+    const targetState = { requests: [], authorizations: [] };
+    const target = http.createServer(async (req, res) => {
+      await readBody(req);
+      targetState.requests.push(req.url);
+      if (req.headers.authorization) {
+        targetState.authorizations.push(req.headers.authorization);
+      }
+      json(res, 200, {});
+    });
+    const targetPort = await listen(target);
+    const source = makeServer({
+      key,
+      serial,
+      mode: 'real',
+      credentialRedirectTarget: `http://127.0.0.1:${targetPort}/stolen`
+    });
+    const sourcePort = await listen(source.server);
+    try {
+      const client = new Api({}, `http://127.0.0.1:${sourcePort}`);
+      await client.completePairing('pid', '123456');
+      await assert.rejects(
+        client.getSettings(),
+        (error) =>
+          error instanceof api.MachineIdentityError &&
+          error.result === 'redirect'
+      );
+      assert.deepStrictEqual(source.state.sawAuthorization, [
+        'Bearer TOKEN-123'
+      ]);
+      assert.deepStrictEqual(
+        targetState.requests,
+        [],
+        'credentialed redirect destination received no request'
+      );
+      assert.deepStrictEqual(targetState.authorizations, []);
+    } finally {
+      await close(source.server);
+      await close(target);
+    }
+    pass++;
+  }
+
   console.log(
-    `ALL ${pass} client-rule checks PASS (happy/recovery/re-pair send only the current token; impostor / forged-fingerprint / wrong-serial / pinned-legacy / redirect / credential race all withhold it)`
+    `ALL ${pass} client-rule checks PASS (happy/recovery/re-pair send only the current token; impostor / forged-fingerprint / wrong-serial / pinned-legacy / redirect / replay / credential race all withhold it; TTL forces a fresh proof)`
   );
 })().catch((e) => {
   console.error('FAIL:', (e && e.stack) || e);
