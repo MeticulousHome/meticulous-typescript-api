@@ -67,8 +67,9 @@ export * from './types';
 // triggers). A sub-millisecond verify makes this essentially free.
 const IDENTITY_TTL_MS = 60_000;
 
-// Thrown by a machine request when the origin has not proven possession of the
-// pinned identity key. The credential is NOT sent.
+// Thrown when a machine request cannot stay bound to a freshly verified origin.
+// No credential is sent to an unverified origin. If a verified endpoint itself
+// redirects, it may see its bearer, but the redirect target is never followed.
 export class MachineIdentityError extends Error {
   constructor(
     public readonly result: VerifyResult,

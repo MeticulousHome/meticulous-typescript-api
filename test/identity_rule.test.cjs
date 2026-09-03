@@ -920,6 +920,68 @@ function challengeGate() {
     pass++;
   }
 
+  // 20) changing an HTTP machine origin to HTTPS when the endpoint has no TLS
+  // fails during the credential-less probe, before any bearer can be attached.
+  {
+    const { server, state } = makeServer({ key, serial, mode: 'real' });
+    const port = await listen(server);
+    try {
+      const client = new Api({}, `https://127.0.0.1:${port}`);
+      client.setCredential({
+        serial,
+        fingerprint: key.fingerprint,
+        publicKey: key.spkiB64,
+        token: 'TOKEN-123'
+      });
+      await assert.rejects(
+        client.getSettings(),
+        (error) =>
+          error instanceof api.MachineIdentityError &&
+          error.result === 'unreachable'
+      );
+      assert.deepStrictEqual(
+        state.sawAuthorization,
+        [],
+        'a TLS failure releases no bearer'
+      );
+    } finally {
+      await close(server);
+    }
+    pass++;
+  }
+
+  // 21) a credential paired on one port is not authority for a different port.
+  // The new exact origin must prove the same pin before receiving the bearer.
+  {
+    const genuine = makeServer({ key, serial, mode: 'real' });
+    const genuinePort = await listen(genuine.server);
+    const genuineClient = new Api({}, `http://127.0.0.1:${genuinePort}`);
+    const credential = await genuineClient.completePairing('pid', '123456');
+
+    const attackerKey = await genKey();
+    const attacker = makeServer({ key: attackerKey, serial, mode: 'real' });
+    const attackerPort = await listen(attacker.server);
+    try {
+      const movedClient = new Api({}, `http://127.0.0.1:${attackerPort}`);
+      movedClient.setCredential(credential);
+      await assert.rejects(
+        movedClient.getSettings(),
+        (error) =>
+          error instanceof api.MachineIdentityError &&
+          error.result === 'mismatch'
+      );
+      assert.deepStrictEqual(
+        attacker.state.sawAuthorization,
+        [],
+        'the changed-port server received no bearer'
+      );
+    } finally {
+      await close(attacker.server);
+      await close(genuine.server);
+    }
+    pass++;
+  }
+
   console.log(
     `ALL ${pass} client-rule checks PASS (happy/recovery/re-pair send only the current token; impostor / forged-fingerprint / wrong-serial / pinned-legacy / redirect / replay / credential race all withhold it; TTL forces a fresh proof)`
   );
