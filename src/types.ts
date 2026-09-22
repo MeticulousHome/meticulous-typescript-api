@@ -112,6 +112,29 @@ export type Settings = {
   telemetry_service_enabled: boolean;
 };
 
+/** `Settings.update_channel` value that puts the machine in limited access. */
+export const LIMITED_ACCESS_CHANNEL = 'factory';
+
+export const isLimitedAccess = (
+  settings?: Pick<Settings, 'update_channel'> | null
+): boolean => settings?.update_channel === LIMITED_ACCESS_CHANNEL;
+
+export interface UnlockMachineRequest {
+  code: string;
+}
+
+export interface UnlockMachineResponse {
+  status: 'ok';
+  update_channel: string;
+  limited_access: false;
+}
+
+/** `APIError.data.code` values returned by POST /machine/unlock. */
+export type UnlockErrorCode =
+  | 'INVALID_BODY'
+  | 'INVALID_UNLOCK_CODE'
+  | 'UNLOCK_THROTTLED';
+
 export type SettingsKey = keyof Settings;
 
 export enum APMode {

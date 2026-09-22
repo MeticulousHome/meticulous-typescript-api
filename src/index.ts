@@ -46,7 +46,9 @@ import {
   PageParams,
   ReportPreflight,
   ReportInfo,
-  SubmitInfo
+  SubmitInfo,
+  UnlockMachineRequest,
+  UnlockMachineResponse
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -434,6 +436,23 @@ export default class Api {
 
   async getDeviceInfo(): Promise<AxiosResponse<DeviceInfo | APIError>> {
     return this.axiosInstance.get(`/api/${this.version}/machine`);
+  }
+
+  /**
+   * POST /machine/unlock. Resolves for expected response statuses so callers
+   * can switch on `response.status`; other statuses and transport errors reject.
+   */
+  async unlockMachine(
+    code: string
+  ): Promise<AxiosResponse<UnlockMachineResponse | APIError>> {
+    const body: UnlockMachineRequest = { code };
+    return this.axiosInstance.post(
+      `/api/${this.version}/machine/unlock`,
+      body,
+      {
+        validateStatus: (status) => [200, 400, 403, 429].includes(status)
+      }
+    );
   }
 
   async setBrightness(
