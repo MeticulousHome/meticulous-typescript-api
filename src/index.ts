@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Socket, io } from 'socket.io-client';
 
 import {
@@ -38,11 +38,13 @@ import {
   TestType,
   DefaultProfiles,
   CreateReportRequest,
-  CreateReportOptions,
+  ReportRequestOptions,
+  ReportErrorCode,
   DraftInfo,
   MeticulousIDRequestType,
   PaginatedResponse,
   PageParams,
+  ReportPreflight,
   ReportInfo,
   SubmitInfo
 } from './types';
@@ -61,6 +63,16 @@ export interface MachineDataClientOptions {
 }
 
 export type ReportResult<T> = T | APIError;
+
+const REPORT_ERROR_CODES: ReadonlySet<string> = new Set([
+  'INVALID_BODY',
+  'INVALID_LOCAL_ID',
+  'UNKNOWN_LOCAL_ID',
+  'FORBIDDEN_UPDATE',
+  'COLLECTION_IN_PROGRESS',
+  'INSUFFICIENT_DISK_SPACE',
+  'INTERNAL'
+]);
 
 const REPORT_INFO_KEYS: (keyof ReportInfo)[] = [
   'description',
@@ -81,6 +93,27 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isAPIError(value: unknown): value is APIError {
   return isObject(value) && typeof value.error === 'string';
+}
+
+export function getReportErrorCode(
+  value: unknown
+): ReportErrorCode | undefined {
+  if (!isAPIError(value)) return undefined;
+  const code = (value.data as { code?: unknown } | undefined)?.code;
+  return typeof code === 'string' && REPORT_ERROR_CODES.has(code)
+    ? (code as ReportErrorCode)
+    : undefined;
+}
+
+function reportRequestConfig(
+  options: ReportRequestOptions | undefined,
+  extra: AxiosRequestConfig = {}
+): AxiosRequestConfig {
+  return {
+    ...extra,
+    signal: options?.signal,
+    ...(options?.timeout ? { timeout: options.timeout } : {})
+  };
 }
 
 function parseAPIError(
@@ -411,47 +444,61 @@ export default class Api {
 
   async createReport(
     request?: CreateReportRequest,
-    options?: CreateReportOptions
+    options?: ReportRequestOptions
   ): Promise<ReportResult<DraftInfo>> {
     try {
-      const config = {
-        headers: {
-          Accept: 'application/json'
-        },
-        signal: options?.signal
-      };
-      const response = request
-        ? await this.axiosInstance.post<DraftInfo | APIError>(
-            `/api/${this.version}/reports/create`,
-            request,
-            config
-          )
-        : await this.axiosInstance.post<DraftInfo | APIError>(
-            `/api/${this.version}/reports/create`,
-            undefined,
-            config
-          );
+      const response = await this.axiosInstance.post<DraftInfo | APIError>(
+        `/api/${this.version}/reports/create`,
+        request,
+        reportRequestConfig(options, {
+          headers: { Accept: 'application/json' }
+        })
+      );
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         return parseAPIError(error.response?.data);
       }
       return parseAPIError(error);
+    }
+  }
+
+  async getReportPreflight(
+    probes: string[] = [],
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<ReportPreflight>> {
+    try {
+      const params = new URLSearchParams();
+      probes.slice(0, 4).forEach((url) => params.append('probe', url));
+      const response = await this.axiosInstance.get<ReportPreflight | APIError>(
+        `/api/${this.version}/reports/preflight`,
+        reportRequestConfig(options ?? { timeout: 15_000 }, {
+          headers: { Accept: 'application/json' },
+          params
+        })
+      );
+      return response.data;
+    } catch (error) {
+      return axios.isAxiosError(error)
+        ? parseAPIError(error.response?.data)
+        : parseAPIError(error);
     }
   }
 
   async getReports(
-    pageParams: PageParams
+    pageParams: PageParams,
+    options?: ReportRequestOptions
   ): Promise<ReportResult<PaginatedResponse<ReportInfo>>> {
     try {
       const response = await this.axiosInstance.get<
         PaginatedResponse<ReportInfo> | APIError
-      >(`/api/${this.version}/reports/list`, {
-        headers: {
-          Accept: 'application/json'
-        },
-        params: pageParams
-      });
+      >(
+        `/api/${this.version}/reports/list`,
+        reportRequestConfig(options, {
+          headers: { Accept: 'application/json' },
+          params: pageParams
+        })
+      );
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -461,16 +508,17 @@ export default class Api {
     }
   }
 
-  async getDraftReport(localID: string): Promise<ReportResult<Uint8Array>> {
+  async getDraftReport(
+    localID: string,
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<Uint8Array>> {
     try {
       const response = await this.axiosInstance.get<ArrayBuffer | APIError>(
-        `/api/${this.version}/reports/draft/${localID}`,
-        {
-          headers: {
-            Accept: 'application/octet-stream'
-          },
+        `/api/${this.version}/reports/draft/${encodeURIComponent(localID)}`,
+        reportRequestConfig(options, {
+          headers: { Accept: 'application/octet-stream' },
           responseType: 'arraybuffer'
-        }
+        })
       );
 
       return new Uint8Array(response.data as ArrayBuffer);
@@ -482,15 +530,16 @@ export default class Api {
     }
   }
 
-  async deleteDraftReport(localID: string): Promise<ReportResult<void>> {
+  async deleteDraftReport(
+    localID: string,
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<void>> {
     try {
       const response = await this.axiosInstance.delete<void | APIError>(
-        `/api/${this.version}/reports/draft/${localID}`,
-        {
-          headers: {
-            Accept: 'application/json'
-          }
-        }
+        `/api/${this.version}/reports/draft/${encodeURIComponent(localID)}`,
+        reportRequestConfig(options, {
+          headers: { Accept: 'application/json' }
+        })
       );
       return isAPIError(response.data) ? response.data : undefined;
     } catch (error) {
@@ -503,7 +552,8 @@ export default class Api {
 
   async updateReport(
     id: string,
-    patch: Partial<ReportInfo>
+    patch: Partial<ReportInfo>,
+    options?: ReportRequestOptions
   ): Promise<ReportResult<ReportInfo>> {
     try {
       const normalizedReport: Partial<ReportInfo> = {};
@@ -514,13 +564,11 @@ export default class Api {
       });
 
       const response = await this.axiosInstance.put<ReportInfo | APIError>(
-        `/api/${this.version}/reports/draft/${id}`,
+        `/api/${this.version}/reports/draft/${encodeURIComponent(id)}`,
         normalizedReport,
-        {
-          headers: {
-            Accept: 'application/json'
-          }
-        }
+        reportRequestConfig(options, {
+          headers: { Accept: 'application/json' }
+        })
       );
       return response.data;
     } catch (error) {
@@ -532,17 +580,16 @@ export default class Api {
   }
 
   async markSubmittedReport(
-    submitInfo: SubmitInfo
+    submitInfo: SubmitInfo,
+    options?: ReportRequestOptions
   ): Promise<ReportResult<void>> {
     try {
       const response = await this.axiosInstance.post<void | APIError>(
         `/api/${this.version}/reports/submit`,
         submitInfo,
-        {
-          headers: {
-            Accept: 'application/json'
-          }
-        }
+        reportRequestConfig(options, {
+          headers: { Accept: 'application/json' }
+        })
       );
       return isAPIError(response.data) ? response.data : undefined;
     } catch (error) {
@@ -555,25 +602,33 @@ export default class Api {
 
   async getMeticulousReportTracking(
     serviceUrl: string,
-    payload: MeticulousIDRequestType
+    payload: MeticulousIDRequestType,
+    options?: ReportRequestOptions
   ): Promise<ReportResult<number>> {
     try {
       const response = await axios.post<{ ticket: number } | APIError>(
         serviceUrl,
         payload,
-        {
+        reportRequestConfig(options ?? { timeout: 15_000 }, {
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json'
           }
-        }
+        })
       );
 
       if (isAPIError(response.data)) {
         return response.data;
       }
 
-      return response.data.ticket;
+      const ticket = response.data.ticket;
+      if (typeof ticket !== 'number' || !Number.isSafeInteger(ticket)) {
+        return parseAPIError('Ticket service returned no ticket', undefined, {
+          value: response.data
+        });
+      }
+
+      return ticket;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         return parseAPIError(error.response?.data);

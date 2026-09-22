@@ -211,8 +211,44 @@ export interface CreateReportRequest {
   issueTime: number;
 }
 
-export interface CreateReportOptions {
+export interface ReportRequestOptions {
   signal?: AbortSignal;
+  /** Milliseconds. 0 or undefined means no timeout (axios default). */
+  timeout?: number;
+}
+
+/** @deprecated use ReportRequestOptions */
+export type CreateReportOptions = ReportRequestOptions;
+
+export type ReportErrorCode =
+  | 'INVALID_BODY'
+  | 'INVALID_LOCAL_ID'
+  | 'UNKNOWN_LOCAL_ID'
+  | 'FORBIDDEN_UPDATE'
+  | 'COLLECTION_IN_PROGRESS'
+  | 'INSUFFICIENT_DISK_SPACE'
+  | 'INTERNAL';
+
+export type PreflightBlocker =
+  | 'NO_SERIAL_NUMBER'
+  | 'INSUFFICIENT_DISK_SPACE'
+  | 'COLLECTION_IN_PROGRESS'
+  | 'NETWORK_UNREACHABLE';
+
+export interface ProbeResult {
+  reachable: boolean;
+  status: number | null;
+  latencyMs: number | null;
+  error: string | null;
+}
+
+export interface ReportPreflight {
+  ok: boolean;
+  blockers: PreflightBlocker[];
+  machineID: string | null;
+  disk: { freeBytes: number; requiredBytes: number; ok: boolean };
+  collectionInProgress: boolean;
+  network: Record<string, ProbeResult>;
 }
 
 export interface ReportInfo {
@@ -236,7 +272,7 @@ export interface DraftInfo {
 export interface SubmitInfo {
   localID: string;
   eventID: string;
-  ticket?: number;
+  ticket?: number | null;
   submissionTime?: number;
 }
 
@@ -250,6 +286,7 @@ export interface PaginatedResponse<T> {
 export interface PageParams {
   size: number;
   page: number;
+  /** FIQL filter forwarded as the `filter` query parameter of GET /reports/list. */
   filter?: string;
 }
 
