@@ -110,6 +110,11 @@ export type Settings = {
   update_channel: string;
   ssh_enabled: boolean;
   telemetry_service_enabled: boolean;
+  /**
+   * Opt-in anonymous upload of debug shot data. `null` means the user never
+   * answered the prompt; older backends omit the key.
+   */
+  shot_data_sharing?: boolean | null;
 };
 
 /** `Settings.update_channel` value that puts the machine in limited access. */
@@ -381,10 +386,125 @@ export type ProfileEvent =
   | 'full_reload'
   | 'load';
 
+export type BrewType = 'espresso' | 'pour_over';
+
 export interface ProfileUpdate {
   change: ProfileEvent;
   profile_id?: string;
   change_id?: string;
+  /** Only present on pour-over profile events. */
+  brew_type?: BrewType;
+}
+
+export type ProfileHoverSource = 'dial' | 'app' | 'backend';
+
+export type ProfileHoverType = 'focus' | 'scroll';
+
+/**
+ * Payload of the `profileHover` socket event (both directions) and of
+ * GET /profile/selected. The backend re-emits a client's hover to every other
+ * client and sends its own with `from: 'backend'` on connect.
+ */
+export interface ProfileHoverEvent {
+  id: string;
+  from: ProfileHoverSource;
+  type: ProfileHoverType;
+}
+
+/**
+ * Payload of the `sensors` socket event: the full ESP32 sensor frame.
+ * `Temperatures`, `Communication` and `Actuators` are legacy partial views
+ * of it.
+ */
+export interface MachineSensors {
+  t_ext_1: number;
+  t_ext_2: number;
+  t_bar_up: number;
+  t_bar_mu: number;
+  t_bar_md: number;
+  t_bar_down: number;
+  t_tube: number;
+  t_motor_temp: number;
+  lam_temp: number;
+  p: number;
+  a_0: number;
+  a_1: number;
+  a_2: number;
+  a_3: number;
+  m_pos: number;
+  m_spd: number;
+  m_pwr: number;
+  m_cur: number;
+  bh_pwr: number;
+  bh_cur: number;
+  w_stat: boolean;
+  motor_temp: number;
+  weight_pred: number;
+}
+
+export type ButtonEventType =
+  | 'ENCODER_CLOCKWISE'
+  | 'ENCODER_COUNTERCLOCKWISE'
+  | 'ENCODER_PUSH'
+  | 'ENCODER_DOUBLE'
+  | 'ENCODER_LONG'
+  | 'TARE'
+  | 'TARE_DOUBLE'
+  | 'TARE_LONG'
+  | 'TARE_SUPER_LONG'
+  | 'CONTEXT'
+  | 'ENCODER_PRESSED'
+  | 'ENCODER_RELEASED'
+  | 'TARE_PRESSED'
+  | 'TARE_RELEASED'
+  | 'CONTEXT_PRESSED'
+  | 'CONTEXT_RELEASED'
+  | 'UNKNOWN';
+
+/** Payload of the `button` socket event (physical dial and tare buttons). */
+export interface ButtonEvent {
+  type: ButtonEventType;
+  time_since_last_event: number;
+}
+
+/** Payload of the `heater_status` socket event: preheat seconds remaining. */
+export type HeaterStatus = number;
+
+/** Values accepted by the `action` socket event. */
+export type SocketActionType =
+  | 'start'
+  | 'stop'
+  | 'tare'
+  | 'scale_master_calibration'
+  | 'preheat'
+  | 'continue'
+  | 'finish'
+  | 'home'
+  | 'purge'
+  | 'abort';
+
+/** Events emitted by the backend, keyed for `Socket<ServerToClientEvents, ClientToServerEvents>`. */
+export interface ServerToClientEvents {
+  status: (data: StatusData) => void;
+  sensors: (data: MachineSensors) => void;
+  profile: (data: ProfileUpdate) => void;
+  profileHover: (data: ProfileHoverEvent) => void;
+  heater_status: (data: HeaterStatus) => void;
+  /** JSON-encoded `NotificationItem`. */
+  notification: (data: string) => void;
+  button: (data: ButtonEvent) => void;
+  OSUpdate: (data: OSStatusResponse) => void;
+  /** Settings changed on the machine; the payload is empty, re-fetch GET /settings. */
+  settings: (data: Record<string, never>) => void;
+}
+
+/** Events the backend listens for. */
+export interface ClientToServerEvents {
+  action: (action: SocketActionType) => void;
+  profileHover: (data: ProfileHoverEvent) => void;
+  /** JSON-encoded `AcknowledgeNotificationRequest`. */
+  notification: (data: string) => void;
+  calibrate: (data: string) => void;
 }
 
 export interface RepoInfo {
