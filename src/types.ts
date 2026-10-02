@@ -320,6 +320,9 @@ export interface ReportPreflight {
   network: Record<string, ProbeResult>;
 }
 
+/** Where a report stands on the machine: queued for the dial, collected but not sent, or sent. */
+export type ReportStatus = 'queued' | 'draft' | 'submitted';
+
 export interface ReportInfo {
   description?: string | null;
   dateAndTime: number | null;
@@ -331,6 +334,8 @@ export interface ReportInfo {
   baseEventID?: string | null;
   ticket?: number | null;
   localID: string | null;
+  /** Set by GET /reports/list; backends that predate it omit it. */
+  status?: ReportStatus | null;
 }
 
 export interface DraftInfo {
