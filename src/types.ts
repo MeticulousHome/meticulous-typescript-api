@@ -115,6 +115,11 @@ export type Settings = {
    * answered the prompt; older backends omit the key.
    */
   shot_data_sharing?: boolean | null;
+  /**
+   * Email support may reply to about bug reports. `null` or an empty string
+   * means the user never provided one; older backends omit the key.
+   */
+  report_contact_mail?: string | null;
 };
 
 /** `Settings.update_channel` value that puts the machine in limited access. */
@@ -235,8 +240,43 @@ export interface MachineAttachments {
   machineStatus?: boolean;
 }
 
+/**
+ * Body of POST /reports/create. Either `issueTime` for a report started on
+ * the dial, or `localID` of a dispatched report (see `ReportDispatch`), whose
+ * issue time was stored with the dispatch. Never both.
+ */
 export interface CreateReportRequest {
+  issueTime?: number;
+  localID?: string;
+}
+
+/** Body of POST /reports/dispatch: hands a mobile report over to the dial. */
+export interface ReportDispatch {
+  /** Minted by POST /reports/request. */
+  localID: string;
+  ticket: number;
+  /** Seconds since epoch. Defaults to the dispatch time on the backend. */
+  issueTime?: number;
+  description?: string | null;
+  name?: string | null;
+  email?: string | null;
+}
+
+/**
+ * Payload of the `upload_report` socket event and of each entry returned by
+ * GET /reports/dispatch. The dial collects the report with `localID` and
+ * uploads it with this ticket and contact.
+ */
+export interface UploadReportEvent {
+  localID: string;
+  machineID: string | null;
+  ticket: number;
   issueTime: number;
+  /** When the dispatch reached the backend, seconds since epoch. */
+  requestTime: number;
+  description: string | null;
+  name: string | null;
+  email: string | null;
 }
 
 export interface ReportRequestOptions {
@@ -255,6 +295,7 @@ export type ReportErrorCode =
   | 'FORBIDDEN_UPDATE'
   | 'COLLECTION_IN_PROGRESS'
   | 'INSUFFICIENT_DISK_SPACE'
+  | 'DUPLICATE_LOCAL_ID'
   | 'INTERNAL';
 
 export type PreflightBlocker =
@@ -496,6 +537,8 @@ export interface ServerToClientEvents {
   OSUpdate: (data: OSStatusResponse) => void;
   /** Settings changed on the machine; the payload is empty, re-fetch GET /settings. */
   settings: (data: Record<string, never>) => void;
+  /** A mobile report was dispatched; the dial collects and uploads it. */
+  upload_report: (data: UploadReportEvent) => void;
 }
 
 /** Events the backend listens for. */

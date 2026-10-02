@@ -46,6 +46,8 @@ import {
   PageParams,
   ReportPreflight,
   ReportInfo,
+  ReportDispatch,
+  UploadReportEvent,
   SubmitInfo,
   UnlockMachineRequest,
   UnlockMachineResponse
@@ -73,6 +75,7 @@ const REPORT_ERROR_CODES: ReadonlySet<string> = new Set([
   'FORBIDDEN_UPDATE',
   'COLLECTION_IN_PROGRESS',
   'INSUFFICIENT_DISK_SPACE',
+  'DUPLICATE_LOCAL_ID',
   'INTERNAL'
 ]);
 
@@ -474,6 +477,76 @@ export default class Api {
         })
       );
       return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  /**
+   * Mint a localID without collecting anything. Pair with `dispatchReport`
+   * to let the dial do the collection and upload.
+   */
+  async requestReport(
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<DraftInfo>> {
+    try {
+      const response = await this.axiosInstance.post<DraftInfo | APIError>(
+        `/api/${this.version}/reports/request`,
+        undefined,
+        reportRequestConfig(options ?? { timeout: 15_000 }, {
+          headers: { Accept: 'application/json' }
+        })
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  /** Hand a report over to the dial; resolves once the backend queued it. */
+  async dispatchReport(
+    dispatch: ReportDispatch,
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<UploadReportEvent>> {
+    try {
+      const response = await this.axiosInstance.post<
+        UploadReportEvent | APIError
+      >(
+        `/api/${this.version}/reports/dispatch`,
+        dispatch,
+        reportRequestConfig(options ?? { timeout: 15_000 }, {
+          headers: { Accept: 'application/json' }
+        })
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  /** Dispatched reports the dial has not collected yet, oldest first. */
+  async getPendingReportDispatches(
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<UploadReportEvent[]>> {
+    try {
+      const response = await this.axiosInstance.get<
+        { content: UploadReportEvent[] } | APIError
+      >(
+        `/api/${this.version}/reports/dispatch`,
+        reportRequestConfig(options ?? { timeout: 15_000 }, {
+          headers: { Accept: 'application/json' }
+        })
+      );
+      return isAPIError(response.data) ? response.data : response.data.content;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         return parseAPIError(error.response?.data);
