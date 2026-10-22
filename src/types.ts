@@ -296,6 +296,8 @@ export type ReportErrorCode =
   | 'COLLECTION_IN_PROGRESS'
   | 'INSUFFICIENT_DISK_SPACE'
   | 'DUPLICATE_LOCAL_ID'
+  | 'REPORT_CANCELLED'
+  | 'TOO_LATE_TO_CANCEL'
   | 'INTERNAL';
 
 export type PreflightBlocker =
@@ -320,8 +322,11 @@ export interface ReportPreflight {
   network: Record<string, ProbeResult>;
 }
 
-/** Where a report stands on the machine: queued for the dial, collected but not sent, or sent. */
-export type ReportStatus = 'queued' | 'draft' | 'submitted';
+/**
+ * Where a report stands on the machine: queued for the dial, collected but
+ * not sent, sent, or cancelled from either app before it was uploaded.
+ */
+export type ReportStatus = 'queued' | 'draft' | 'submitted' | 'cancelled';
 
 export interface ReportInfo {
   description?: string | null;
@@ -342,6 +347,58 @@ export interface DraftInfo {
   localID: string;
   machineID: string;
 }
+
+/**
+ * A stage of a report on the machine, report progress contract v1. The
+ * non-final ones run in this order; a report skips the ones its `stages`
+ * omit (`queued` for a Dial quick report, `ticketing` for a mobile one).
+ */
+export type ReportStage =
+  | 'queued'
+  | 'preparing'
+  | 'fetching_machine_info'
+  | 'fetching_logs'
+  | 'fetching_machine_status'
+  | 'collecting_debug_shots'
+  | 'ticketing'
+  | 'compressing'
+  | 'uploading'
+  | 'finishing'
+  | 'submitted'
+  | 'failed'
+  | 'cancelled';
+
+/**
+ * Payload of the `report_progress` socket event and of each entry of
+ * GET /reports/progress. Clients draw from `stages`, never from a hardcoded
+ * list, and ignore fields and stages they do not know.
+ */
+export interface ReportProgress {
+  v: 1;
+  localID: string;
+  /** Where the report was started. */
+  origin: 'dial' | 'mobile';
+  ticket: number | null;
+  stage: ReportStage;
+  /** The non-final stages of this report, in order. */
+  stages: ReportStage[];
+  /** Debug shots copied so far, during `collecting_debug_shots`. */
+  detail: { current: number; total: number } | null;
+  /** False from `uploading` on, and once final. */
+  cancellable: boolean;
+  /** True for `submitted`, `failed` and `cancelled`. */
+  final: boolean;
+  /** `code` is a BR-xx code when the uploader knows it, else INTERNAL. */
+  failure: { code: string; message: string } | null;
+  /** Seconds since epoch. */
+  startedAt: number;
+  updatedAt: number;
+}
+
+/** Body of POST /reports/<localID>/progress: the stages only the uploader knows. */
+export type ReportProgressUpdate =
+  | { stage: 'ticketing' | 'uploading' }
+  | { failed: { code: string; message: string } };
 
 export interface SubmitInfo {
   localID: string;
@@ -544,6 +601,8 @@ export interface ServerToClientEvents {
   settings: (data: Record<string, never>) => void;
   /** A mobile report was dispatched; the dial collects and uploads it. */
   upload_report: (data: UploadReportEvent) => void;
+  /** A report moved to another stage; see `ReportProgress`. */
+  report_progress: (data: ReportProgress) => void;
 }
 
 /** Events the backend listens for. */

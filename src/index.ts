@@ -48,6 +48,8 @@ import {
   ReportInfo,
   ReportDispatch,
   UploadReportEvent,
+  ReportProgress,
+  ReportProgressUpdate,
   SubmitInfo,
   UnlockMachineRequest,
   UnlockMachineResponse
@@ -76,6 +78,8 @@ const REPORT_ERROR_CODES: ReadonlySet<string> = new Set([
   'COLLECTION_IN_PROGRESS',
   'INSUFFICIENT_DISK_SPACE',
   'DUPLICATE_LOCAL_ID',
+  'REPORT_CANCELLED',
+  'TOO_LATE_TO_CANCEL',
   'INTERNAL'
 ]);
 
@@ -547,6 +551,81 @@ export default class Api {
         })
       );
       return isAPIError(response.data) ? response.data : response.data.content;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  /**
+   * Reports in flight and the ones that ended in the last minute. `null`
+   * means the backend predates report progress (it answers 404): keep the
+   * behaviour from before it.
+   */
+  async getReportProgress(
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<ReportProgress[] | null>> {
+    try {
+      const response = await this.axiosInstance.get<
+        { content: ReportProgress[] } | APIError
+      >(
+        `/api/${this.version}/reports/progress`,
+        reportRequestConfig(options ?? { timeout: 15_000 }, {
+          headers: { Accept: 'application/json' }
+        })
+      );
+      return isAPIError(response.data) ? response.data : response.data.content;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) return null;
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  /** Report the uploader's own stage, or that it gave up on the report. */
+  async updateReportProgress(
+    localID: string,
+    update: ReportProgressUpdate,
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<ReportProgress>> {
+    try {
+      const response = await this.axiosInstance.post<ReportProgress | APIError>(
+        `/api/${this.version}/reports/${encodeURIComponent(localID)}/progress`,
+        update,
+        reportRequestConfig(options ?? { timeout: 15_000 }, {
+          headers: { Accept: 'application/json' }
+        })
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return parseAPIError(error.response?.data);
+      }
+      return parseAPIError(error);
+    }
+  }
+
+  /**
+   * Cancel a report until it is being uploaded; then the answer is
+   * TOO_LATE_TO_CANCEL. Cancelling a cancelled report returns it again.
+   */
+  async cancelReport(
+    localID: string,
+    options?: ReportRequestOptions
+  ): Promise<ReportResult<ReportProgress>> {
+    try {
+      const response = await this.axiosInstance.post<ReportProgress | APIError>(
+        `/api/${this.version}/reports/${encodeURIComponent(localID)}/cancel`,
+        undefined,
+        reportRequestConfig(options ?? { timeout: 15_000 }, {
+          headers: { Accept: 'application/json' }
+        })
+      );
+      return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         return parseAPIError(error.response?.data);
