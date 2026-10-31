@@ -97,6 +97,8 @@ export type Settings = {
   auto_purge_after_shot: boolean;
   auto_start_shot: boolean;
   tare_behavior?: TareBehavior;
+  /** End the shot on the Kalman-filtered weight, ignoring bumps on the scale. Stored on the ESP32. */
+  disturbance_resilience?: boolean;
   partial_retraction: number;
   disallow_firmware_flashing: boolean;
   disable_ui_features: boolean;
@@ -543,6 +545,10 @@ export interface MachineSensors {
   w_stat: boolean;
   motor_temp: number;
   weight_pred: number;
+  /** Tared weight after the Kalman filter. Absent on older backends. */
+  weight_kalman?: number;
+  /** Kalman weight plus its dripping prediction. Absent on older backends. */
+  weight_pred_kalman?: number;
 }
 
 export type ButtonEventType =
@@ -624,6 +630,9 @@ export interface DeviceInfo {
   hostname: string;
   firmware: string;
   tare_behavior_supported?: boolean;
+  /** The value stored on the ESP32; null when its firmware does not support it. */
+  disturbance_resilience?: boolean | null;
+  disturbance_resilience_supported?: boolean;
   mainVoltage: number;
   color: string;
   serial: string;
