@@ -122,6 +122,11 @@ export type Settings = {
    * means the user never provided one; older backends omit the key.
    */
   report_contact_mail?: string | null;
+  /**
+   * Whether devices on the network need a pairing token to use the API. Can
+   * only be changed on the machine itself; older backends omit the key.
+   */
+  require_authorization?: boolean;
 };
 
 /** `Settings.update_channel` value that puts the machine in limited access. */
@@ -146,6 +151,83 @@ export type UnlockErrorCode =
   | 'INVALID_BODY'
   | 'INVALID_UNLOCK_CODE'
   | 'UNLOCK_THROTTLED';
+
+/**
+ * Who asks for a pairing code: `new` is the machine's own "Pair a device"
+ * screen (local callers only), `grant` is an already paired device letting
+ * another one in.
+ */
+export type AuthPairingMode = 'new' | 'grant';
+
+/** Response of POST /auth/pairing. */
+export interface PairingCodeResponse {
+  /** 8 Crockford base32 characters, usually displayed as `ABCD-EFGH`. */
+  code: string;
+  /** `http://<host>/#pair=<code>`, meant for QR codes. */
+  pair_url: string;
+  /** Seconds until the code expires. */
+  expires_in: number;
+}
+
+export interface TokenExchangeRequest {
+  /** The pairing code; dashes, spaces and lowercase are accepted. */
+  code: string;
+  /** Name shown on the machine for this device. */
+  name?: string;
+}
+
+/** A paired device as the machine knows it. */
+export interface AuthDevice {
+  id: string;
+  name: string;
+}
+
+/** Response of POST /auth/token. */
+export interface TokenResponse {
+  token: string;
+  device: AuthDevice;
+}
+
+/** 200 response of GET /auth/validate. */
+export interface TokenValidation {
+  /** Whether the machine currently requires authorization. */
+  required: boolean;
+  /** Whether the request came from the machine itself. */
+  local: boolean;
+  /** Whether the request carried a valid token. */
+  token_valid: boolean;
+  /** The device the token belongs to, `null` without a valid token. */
+  device: AuthDevice | null;
+}
+
+/** 202 response of POST /auth/request. */
+export interface AccessRequestResponse {
+  /** Id to poll with GET /auth/request/<id>. */
+  id: string;
+  /** Seconds the machine waits for someone to answer. */
+  expires_in: number;
+}
+
+/**
+ * Response of GET /auth/request/<id>. Once approved it carries a pairing code
+ * to exchange through POST /auth/token.
+ */
+export type AccessRequestStatus =
+  | { status: 'pending' }
+  | { status: 'denied' }
+  | { status: 'expired' }
+  | { status: 'approved'; code: string; expires_in: number };
+
+/** `APIError.data.code` values returned by /auth and by the API guard. */
+export type AuthErrorCode =
+  | 'UNAUTHORIZED'
+  | 'INVALID_CODE'
+  | 'INVALID_REQUEST'
+  | 'INVALID_MODE'
+  | 'LOCAL_ONLY'
+  | 'REQUEST_PENDING'
+  | 'TOO_MANY_ATTEMPTS'
+  | 'NOT_FOUND';
 
 export type SettingsKey = keyof Settings;
 
