@@ -52,7 +52,14 @@ import {
   ReportProgressUpdate,
   SubmitInfo,
   UnlockMachineRequest,
-  UnlockMachineResponse
+  UnlockMachineResponse,
+  AuthPairingMode,
+  PairingCodeResponse,
+  TokenExchangeRequest,
+  TokenResponse,
+  TokenValidation,
+  AccessRequestResponse,
+  AccessRequestStatus
 } from './types';
 
 import { Profile } from '@meticulous-home/espresso-profile';
@@ -66,6 +73,12 @@ export interface MachineDataClientOptions {
   onActuators?: (data: Actuators) => void;
   onProfileUpdate?: (data: ProfileUpdate) => void;
   onNotification?: (data: NotificationItem) => void;
+  /**
+   * Called when the machine answers 401 with `data.code === 'UNAUTHORIZED'`,
+   * meaning this device has to pair (again). Not called for the /auth calls,
+   * whose 401s are answers about a code or token rather than that signal.
+   */
+  onUnauthorized?: () => void;
 }
 
 export type ReportResult<T> = T | APIError;
@@ -152,6 +165,17 @@ function parseAPIError(
   return error;
 }
 
+// Reads `data.code` from an error body, which may still be binary when the
+// request asked for a blob or an array buffer.
+async function errorCodeOf(value: unknown): Promise<unknown> {
+  const body =
+    value instanceof ArrayBuffer ||
+    (typeof Blob !== 'undefined' && value instanceof Blob)
+      ? await parseBinaryErrorBody(value)
+      : value;
+  return isObject(body) && isObject(body.data) ? body.data.code : undefined;
+}
+
 async function parseBinaryErrorBody(value: unknown): Promise<APIError> {
   if (value instanceof ArrayBuffer) {
     const body = new TextDecoder().decode(value);
@@ -175,13 +199,16 @@ export default class Api {
 
   private serverURL: string;
   private version: string = 'v1';
+  private token: string | undefined;
 
   constructor(
     private options?: MachineDataClientOptions,
-    base_url?: string
+    base_url?: string,
+    token?: string
   ) {
     const serverURL = base_url || 'http://localhost:8080/';
     this.serverURL = serverURL;
+    this.token = token || undefined;
 
     // AXIOS
     this.axiosInstance = axios.create({
@@ -191,6 +218,72 @@ export default class Api {
         'Content-Type': 'application/json'
       }
     });
+
+    // Read the token on every request so setToken applies to this instance
+    // right away. A header set by the call itself (validateToken with an
+    // explicit token) wins.
+    this.axiosInstance.interceptors.request.use((config) => {
+      if (this.token && !config.headers.has('Authorization')) {
+        config.headers.set('Authorization', `Bearer ${this.token}`);
+      }
+      return config;
+    });
+
+    this.axiosInstance.interceptors.response.use(
+      async (response) => {
+        await this.checkUnauthorized(response);
+        return response;
+      },
+      async (error) => {
+        if (axios.isAxiosError(error) && error.response) {
+          await this.checkUnauthorized(error.response);
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  private async checkUnauthorized(response: AxiosResponse): Promise<void> {
+    const onUnauthorized = this.options?.onUnauthorized;
+    if (!onUnauthorized || response.status !== 401) return;
+
+    // A 401 from /auth is about the code or token the call carried, not a
+    // sign that the device lost access. The path is cut out by hand because
+    // React Native's URL does not implement `pathname`.
+    const authPath = `/api/${this.version}/auth`;
+    const path = (response.config.url ?? '')
+      .split(/[?#]/)[0]
+      .replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*/i, '');
+    if (path === authPath || path.startsWith(`${authPath}/`)) return;
+
+    try {
+      if ((await errorCodeOf(response.data)) !== 'UNAUTHORIZED') return;
+      onUnauthorized();
+    } catch {
+      // An unreadable body or a failing handler must not change the
+      // request's outcome.
+    }
+  }
+
+  /**
+   * Sets or clears (`undefined` or empty) the token sent as
+   * `Authorization: Bearer`. A socket that is already open is reconnected,
+   * because the machine checks the token only during the handshake.
+   */
+  setToken(token?: string) {
+    const next = token || undefined;
+    const changed = next !== this.token;
+    this.token = next;
+
+    const socket = this.socket;
+    if (socket && (changed || !socket.connected)) {
+      socket.disconnect();
+      socket.connect();
+    }
+  }
+
+  getToken(): string | undefined {
+    return this.token;
   }
 
   disconnectSocket() {
@@ -206,7 +299,10 @@ export default class Api {
 
   connectToSocket() {
     // Socket.io
-    this.socket = io(this.serverURL);
+    // A function so every (re)connect sends the current token.
+    this.socket = io(this.serverURL, {
+      auth: (cb) => cb(this.token ? { token: this.token } : {})
+    });
 
     if (this.options && this.options.onStatus) {
       this.socket.on('status', this.options && this.options.onStatus);
@@ -458,6 +554,105 @@ export default class Api {
       body,
       {
         validateStatus: (status) => [200, 400, 403, 429].includes(status)
+      }
+    );
+  }
+
+  /**
+   * POST /auth/pairing. `new` works only on the machine itself, `grant` needs a
+   * paired device. Resolves on 200, 400 (INVALID_MODE), 401 (UNAUTHORIZED),
+   * 403 (LOCAL_ONLY) and 404 (a backend without device authorization).
+   */
+  async requestPairingCode(
+    mode: AuthPairingMode
+  ): Promise<AxiosResponse<PairingCodeResponse | APIError>> {
+    return this.axiosInstance.post(
+      `/api/${this.version}/auth/pairing`,
+      undefined,
+      {
+        params: { mode },
+        validateStatus: (status) => [200, 400, 401, 403, 404].includes(status)
+      }
+    );
+  }
+
+  /**
+   * POST /auth/token. Trades a pairing code for a token; it does not store the
+   * token, call setToken with it. Resolves on 200, 400 (INVALID_REQUEST),
+   * 401 (INVALID_CODE), 404 (a backend without device authorization) and
+   * 429 (TOO_MANY_ATTEMPTS, see the `Retry-After` header).
+   */
+  async exchangePairingCode(
+    code: string,
+    name?: string
+  ): Promise<AxiosResponse<TokenResponse | APIError>> {
+    const body: TokenExchangeRequest =
+      name === undefined ? { code } : { code, name };
+    return this.axiosInstance.post(`/api/${this.version}/auth/token`, body, {
+      validateStatus: (status) => [200, 400, 401, 404, 429].includes(status)
+    });
+  }
+
+  /**
+   * GET /auth/validate. 200 when this device may use the API, 401
+   * (UNAUTHORIZED) when it has to pair, 404 on a backend without device
+   * authorization. A given `token` is checked instead of the stored one.
+   */
+  async validateToken(
+    token?: string
+  ): Promise<AxiosResponse<TokenValidation | APIError>> {
+    return this.axiosInstance.get(`/api/${this.version}/auth/validate`, {
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+      validateStatus: (status) => [200, 401, 404].includes(status)
+    });
+  }
+
+  /**
+   * POST /auth/request. Asks the person at the machine to let this device in;
+   * poll the result with getAccessRequest. Resolves on 202, 400
+   * (INVALID_REQUEST), 404 (a backend without device authorization), 409
+   * (REQUEST_PENDING) and 429 (TOO_MANY_ATTEMPTS, see `Retry-After`).
+   */
+  async requestAccess(
+    name: string
+  ): Promise<AxiosResponse<AccessRequestResponse | APIError>> {
+    return this.axiosInstance.post(
+      `/api/${this.version}/auth/request`,
+      { name },
+      {
+        validateStatus: (status) => [202, 400, 404, 409, 429].includes(status)
+      }
+    );
+  }
+
+  /**
+   * GET /auth/request/<id>. Resolves on 200 and on 404 (NOT_FOUND, or a
+   * backend without device authorization).
+   */
+  async getAccessRequest(
+    id: string
+  ): Promise<AxiosResponse<AccessRequestStatus | APIError>> {
+    return this.axiosInstance.get(
+      `/api/${this.version}/auth/request/${encodeURIComponent(id)}`,
+      {
+        validateStatus: (status) => [200, 404].includes(status)
+      }
+    );
+  }
+
+  /**
+   * POST /auth/sign_out_all. Invalidates every issued token; works only on the
+   * machine itself. Resolves on 200, 403 (LOCAL_ONLY) and 404 (a backend
+   * without device authorization).
+   */
+  async signOutAllDevices(): Promise<
+    AxiosResponse<{ status: 'ok' } | APIError>
+  > {
+    return this.axiosInstance.post(
+      `/api/${this.version}/auth/sign_out_all`,
+      undefined,
+      {
+        validateStatus: (status) => [200, 403, 404].includes(status)
       }
     );
   }
