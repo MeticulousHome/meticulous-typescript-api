@@ -66,6 +66,8 @@ export type ReverseScrolling = {
 
 export type TareBehavior = 'after_retraction' | 'before_retraction';
 
+export type DialTheme = 'dark' | 'light';
+
 export type SettingsType = boolean | number | string;
 
 export type Option = {
@@ -105,6 +107,12 @@ export type Settings = {
   enable_sounds: boolean;
   debug_shot_data_retention_days: number;
   idle_screen: string;
+  /**
+   * Theme of the Dial. `null` means it was never chosen and the Dial follows
+   * the machine's color: light on a white machine, dark on any other. Older
+   * backends omit the key.
+   */
+  theme?: DialTheme | null;
   reverse_scrolling: ReverseScrolling;
   heating_timeout: number;
   timezone_sync: string;
